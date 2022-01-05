@@ -1,0 +1,211 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Form Files">
+      <UniqueIdentifier>{99349809-55BA-4b9d-BF79-8FDBB0286EB3}</UniqueIdentifier>
+      <Extensions>ui</Extensions>
+      <ParseFiles>false</ParseFiles>
+    </Filter>
+    <Filter Include="Form Files">
+      <UniqueIdentifier>{99349809-55BA-4b9d-BF79-8FDBB0286EB3}</UniqueIdentifier>
+      <Extensions>ui</Extensions>
+      <ParseFiles>false</ParseFiles>
+    </Filter>
+    <Filter Include="Generated Files">
+      <UniqueIdentifier>{71ED8ED8-ACB9-4CE9-BBE1-E00B30144E11}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx;moc;h;def;odl;idl;res;</Extensions>
+    </Filter>
+    <Filter Include="Generated Files">
+      <UniqueIdentifier>{71ED8ED8-ACB9-4CE9-BBE1-E00B30144E11}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx;moc;h;def;odl;idl;res;</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Doulos">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Device Control">
+      <UniqueIdentifier>{12a36184-244f-43dd-afed-cbaff4b5be12}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Data Acquisition">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Memory Buffer">
+      <UniqueIdentifier>{ef89d70c-9773-446b-89b8-b513229263b1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Doulos\Dialog">
+      <UniqueIdentifier>{8de50ab4-880e-4917-bb1b-5a214b11a738}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Doulos\Viewer">
+      <UniqueIdentifier>{382b1e56-3e3a-4b85-a22e-fd43c42c8368}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Device Control\ElforlightLaser">
+      <UniqueIdentifier>{d845426d-52b0-4e85-b658-b3641fdd8f6a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Device Control\FLImTrigger">
+      <UniqueIdentifier>{02aeafec-7096-42e5-93dd-8ac950e537b1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Device Control\GalvoScan">
+      <UniqueIdentifier>{3df36aa8-0487-4315-a27e-2e2e560dea0d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Device Control\PmtGainControl">
+      <UniqueIdentifier>{710b1ea8-5c73-4701-be93-b2feaf85abe0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Data Acquisition\SignatecDAQ">
+      <UniqueIdentifier>{8b0f2745-af61-47f7-aeab-3fe228f6bb95}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Data Acquisition\FLImProcess">
+      <UniqueIdentifier>{acd08384-aee0-49ef-8e49-dd6bf6e28d3c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="DataAcquisition\DataAcquisition.cpp">
+      <Filter>Data Acquisition</Filter>
+    </ClCompile>
+    <ClCompile Include="DataAcquisition\ThreadManager.cpp">
+      <Filter>Data Acquisition</Filter>
+    </ClCompile>
+    <ClCompile Include="Doulos\QVisualizationTab.cpp">
+      <Filter>Doulos</Filter>
+    </ClCompile>
+    <ClCompile Include="Doulos\QDeviceControlTab.cpp">
+      <Filter>Doulos</Filter>
+    </ClCompile>
+    <ClCompile Include="Doulos\QOperationTab.cpp">
+      <Filter>Doulos</Filter>
+    </ClCompile>
+    <ClCompile Include="Doulos\QResultTab.cpp">
+      <Filter>Doulos</Filter>
+    </ClCompile>
+    <ClCompile Include="Doulos\QStreamTab.cpp">
+      <Filter>Doulos</Filter>
+    </ClCompile>
+    <ClCompile Include="Doulos\Doulos.cpp">
+      <Filter>Doulos</Filter>
+    </ClCompile>
+    <ClCompile Include="MemoryBuffer\MemoryBuffer.cpp">
+      <Filter>Memory Buffer</Filter>
+    </ClCompile>
+    <ClCompile Include="Doulos\MainWindow.cpp">
+      <Filter>Doulos</Filter>
+    </ClCompile>
+    <ClCompile Include="Doulos\Dialog\FlimCalibDlg.cpp">
+      <Filter>Doulos\Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="Doulos\Viewer\QImageView.cpp">
+      <Filter>Doulos\Viewer</Filter>
+    </ClCompile>
+    <ClCompile Include="Doulos\Viewer\QScope.cpp">
+      <Filter>Doulos\Viewer</Filter>
+    </ClCompile>
+    <ClCompile Include="DeviceControl\FLImControl\FLImTrigger.cpp">
+      <Filter>Device Control\FLImTrigger</Filter>
+    </ClCompile>
+    <ClCompile Include="DeviceControl\ElforlightLaser\ElforlightLaser.cpp">
+      <Filter>Device Control\ElforlightLaser</Filter>
+    </ClCompile>
+    <ClCompile Include="DeviceControl\GalvoScan\GalvoScan.cpp">
+      <Filter>Device Control\GalvoScan</Filter>
+    </ClCompile>
+    <ClCompile Include="DeviceControl\FLImControl\PmtGainControl.cpp">
+      <Filter>Device Control\PmtGainControl</Filter>
+    </ClCompile>
+    <ClCompile Include="DataAcquisition\FLImProcess\FLImProcess.cpp">
+      <Filter>Data Acquisition\FLImProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="DataAcquisition\SignatecDAQ\SignatecDAQ.cpp">
+      <Filter>Data Acquisition\SignatecDAQ</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Doulos\Configuration.h">
+      <Filter>Doulos</Filter>
+    </ClInclude>
+    <QtMoc Include="Doulos\MainWindow.h">
+      <Filter>Doulos</Filter>
+    </QtMoc>
+    <QtMoc Include="Doulos\QDeviceControlTab.h">
+      <Filter>Doulos</Filter>
+    </QtMoc>
+    <QtMoc Include="Doulos\QOperationTab.h">
+      <Filter>Doulos</Filter>
+    </QtMoc>
+    <QtMoc Include="Doulos\QResultTab.h">
+      <Filter>Doulos</Filter>
+    </QtMoc>
+    <QtMoc Include="Doulos\QStreamTab.h">
+      <Filter>Doulos</Filter>
+    </QtMoc>
+    <QtMoc Include="Doulos\QVisualizationTab.h">
+      <Filter>Doulos</Filter>
+    </QtMoc>
+    <ClInclude Include="DataAcquisition\ThreadManager.h">
+      <Filter>Data Acquisition</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceControl\FLImControl\FLImTrigger.h">
+      <Filter>Device Control\FLImTrigger</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceControl\ElforlightLaser\ElforlightLaser.h">
+      <Filter>Device Control\ElforlightLaser</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceControl\GalvoScan\GalvoScan.h">
+      <Filter>Device Control\GalvoScan</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceControl\FLImControl\PmtGainControl.h">
+      <Filter>Device Control\PmtGainControl</Filter>
+    </ClInclude>
+    <ClInclude Include="DataAcquisition\FLImProcess\FLImProcess.h">
+      <Filter>Data Acquisition\FLImProcess</Filter>
+    </ClInclude>
+    <ClInclude Include="DataAcquisition\SignatecDAQ\SignatecDAQ.h">
+      <Filter>Data Acquisition\SignatecDAQ</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="debug\moc_predefs.h.cbt">
+      <Filter>Generated Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="release\moc_predefs.h.cbt">
+      <Filter>Generated Files</Filter>
+    </CustomBuild>
+    <ClInclude Include="ui_MainWindow.h">
+      <Filter>Generated Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <QtUic Include="Doulos\MainWindow.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Doulos.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="DeviceControl\QSerialComm.h">
+      <Filter>Device Control</Filter>
+    </QtMoc>
+    <QtMoc Include="DataAcquisition\DataAcquisition.h">
+      <Filter>Data Acquisition</Filter>
+    </QtMoc>
+    <QtMoc Include="MemoryBuffer\MemoryBuffer.h">
+      <Filter>Memory Buffer</Filter>
+    </QtMoc>
+    <QtMoc Include="Doulos\Dialog\FlimCalibDlg.h">
+      <Filter>Doulos\Dialog</Filter>
+    </QtMoc>
+    <QtMoc Include="Doulos\Viewer\QImageView.h">
+      <Filter>Doulos\Viewer</Filter>
+    </QtMoc>
+    <QtMoc Include="Doulos\Viewer\QScope.h">
+      <Filter>Doulos\Viewer</Filter>
+    </QtMoc>
+  </ItemGroup>
+</Project>

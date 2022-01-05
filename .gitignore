@@ -1,0 +1,14 @@
+.vs/
+bin/
+Debug/
+GeneratedFiles/
+include/
+install/
+lib/
+Release/
+x64/
+Doulos.pro.user
+Doulos.sln
+Doulos.vcxproj*
+Doulos.sdf
+Doulos.VC*
