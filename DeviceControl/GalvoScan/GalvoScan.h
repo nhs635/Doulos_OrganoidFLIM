@@ -12,12 +12,10 @@ public:
 	GalvoScan();
 	~GalvoScan();
 	
-    //int horizontal_size;
-
 	double pp_voltage;
 	double offset;
 	int step;
-
+	
 	bool initialize();
 	void start();
 	void stop();
@@ -33,8 +31,6 @@ public:
     callback2<const char*, bool> SendStatusMessage;
 
 private:	
-	//int nIter;
-
 	double max_rate;
 	double* data;
 	

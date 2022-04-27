@@ -55,6 +55,10 @@ public:
     // Status bar
     QLabel *m_pStatusLabel_ImagePos;
 	QLabel *m_pStatusLabel_SyncStatus;
+
+	QLabel *m_pStatusLabel_Acquisition;
+	QLabel *m_pStatusLabel_Recording;
+	QLabel *m_pStatusLabel_StageMoving;
 };
 
 #endif // MAINWINDOW_H

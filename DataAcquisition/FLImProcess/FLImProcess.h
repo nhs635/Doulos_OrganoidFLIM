@@ -124,7 +124,9 @@ public:
             initialize(pParams, _nx, FLIM_SPLINE_FACTOR, src.size(1));
 
         // 1. Crop ROI
+		//Ipp32f bg_auto;
         int offset = pParams.ch_start_ind[0];
+		//ippsMean_32f(&src(0, 0), offset, &bg_auto, ippAlgHintFast); // determine bg
 		ippiCopy_32f_C1R(&src(offset, 0), sizeof(float) * src.size(0),
                         crop_src.raw_ptr(), sizeof(float) * crop_src.size(0), srcSize);
 
@@ -143,6 +145,7 @@ public:
         }
 
         // 3. BG subtraction
+		//printf("%f %f\n", bg_auto, pParams.bg);
         ippsSubC_32f(crop_src.raw_ptr(), pParams.bg, ext_src.raw_ptr(), ext_src.length());
 
 		//// Parallel-for loop

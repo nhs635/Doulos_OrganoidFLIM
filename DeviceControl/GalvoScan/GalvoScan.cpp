@@ -10,15 +10,14 @@ using namespace std;
 
 GalvoScan::GalvoScan() :
 	_taskHandle(nullptr),
-    //horizontal_size(1024),
-	//nIter(1),
 	pp_voltage(2.0),
 	offset(0.0),
-	step(N_LINES),
-    max_rate(1000.0),
+	step(1000),
+    max_rate(2000.0),
 	data(nullptr),
 	physicalChannel(NI_GALVO_CHANNEL),
-    sourceTerminal(NI_GAVLO_SOURCE),
+    sourceTerminal(NI_GALVO_SOURCE),
+	
 	triggerSource(NI_GALVO_START_TRIG_SOURCE)
 {
 }
@@ -51,8 +50,8 @@ bool GalvoScan::initialize()
 	//	data[2 * step - 1 - i] = data[i];
 	//}
 	//step = 2 * step;
-		
-	// Uni-directional slow scan
+	//	
+	// Uni-directional slow scan pattern
 	data = new double[step];
 	for (int i = 0; i < GALVO_FLYING_BACK; i++)
 		data[i] = -(double)i * (pp_voltage * 2 / (GALVO_FLYING_BACK - 1)) + pp_voltage + offset;
@@ -73,11 +72,12 @@ bool GalvoScan::initialize()
 		return false;
 	}
 	if ((res = DAQmxCfgSampClkTiming(_taskHandle, sourceTerminal, max_rate, DAQmx_Val_Rising, sample_mode, step)) != 0)
+	//if(res = DAQmxCfgChangeDetectionTiming(_taskHandle, "/Dev1 /PFI7", "/Dev1 /P0.16", sample_mode, step) != 0)
 	{
 		dumpError(res, "ERROR: Failed to set galvoscanner3: ");
 		return false;
 	}
-	if ((res = DAQmxCfgDigEdgeStartTrig(_taskHandle, triggerSource, DAQmx_Val_Rising))) //v sync generator ¸¸µé±â
+	if ((res = DAQmxCfgDigEdgeStartTrig(_taskHandle, triggerSource, DAQmx_Val_Rising))) //v sync generator 
 	{
 		dumpError(res, "ERROR: Failed to set galvoscanner4: ");
 		return false;

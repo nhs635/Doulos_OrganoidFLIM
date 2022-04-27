@@ -121,6 +121,11 @@ void FlimCalibDlg::createCalibWidgets()
     QGridLayout *pGridLayout_PulseView = new QGridLayout;
     pGridLayout_PulseView->setSpacing(2);
 
+	// Create widget for FLIM pulse writing
+	m_pToggleButton_WriteCurrentPulses = new QPushButton(this);
+	m_pToggleButton_WriteCurrentPulses->setText("Write Current Pulses");
+	m_pToggleButton_WriteCurrentPulses->setCheckable(true);
+
     // Create widgets for FLIM calibration
     m_pPushButton_CaptureBackground = new QPushButton(this);
     m_pPushButton_CaptureBackground->setText("Capture Background");
@@ -181,11 +186,13 @@ void FlimCalibDlg::createCalibWidgets()
     // Set layout
     QHBoxLayout *pHBoxLayout_Background = new QHBoxLayout;
     pHBoxLayout_Background->setSpacing(2);
+	pHBoxLayout_Background->addWidget(m_pToggleButton_WriteCurrentPulses);
+	pHBoxLayout_Background->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
     pHBoxLayout_Background->addWidget(m_pPushButton_CaptureBackground);
     pHBoxLayout_Background->addWidget(m_pLineEdit_Background);
 	
-    pGridLayout_PulseView->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 0, 1, 4);
-    pGridLayout_PulseView->addItem(pHBoxLayout_Background, 0, 4, 1, 3);
+    //pGridLayout_PulseView->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 0, 1, 4);
+    pGridLayout_PulseView->addItem(pHBoxLayout_Background, 0, 0, 1, 7);
     pGridLayout_PulseView->addItem(new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Fixed), 0, 7);
 
     pGridLayout_PulseView->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 0);
@@ -208,6 +215,7 @@ void FlimCalibDlg::createCalibWidgets()
     m_pVBoxLayout->addItem(pGridLayout_PulseView);
 
     // Connect
+	connect(m_pToggleButton_WriteCurrentPulses, SIGNAL(toggled(bool)), this, SLOT(writeCurrentPulses(bool)));
     connect(m_pPushButton_CaptureBackground, SIGNAL(clicked(bool)), this, SLOT(captureBackground()));
     connect(m_pLineEdit_Background, SIGNAL(textChanged(const QString &)), this, SLOT(captureBackground(const QString &)));
     connect(m_pSpinBox_ChStart[0], SIGNAL(valueChanged(double)), this, SLOT(resetChStart0(double)));
@@ -395,6 +403,18 @@ void FlimCalibDlg::drawRoiPulse(float* pulse_ptr, int aline)
 			&pulse_32f(0, 0), sizeof(float) * _roi_width, { _roi_width, m_pConfig->nTimes });
 	}
 
+	// Pulse writing (if specified)
+	if (m_pToggleButton_WriteCurrentPulses->isChecked())
+	{
+		QDateTime date = QDateTime::currentDateTime();
+		QString formattedTime = date.toString("yyyy-MM-dd_hh-mm-ss");
+
+		QFile file("pulse_data/pulse_" + formattedTime + ".data");
+		if (file.open(QIODevice::WriteOnly))
+			file.write(reinterpret_cast<char*>(pulse_32f.raw_ptr()), sizeof(float) * pulse_32f.length());
+		file.close();
+	}
+
 	// Reset size (if necessary)	
 	if (roi_width != pulse_32f.size(0))
 	{
@@ -562,6 +582,11 @@ void FlimCalibDlg::enableRoiSegmentView(bool enabled)
 		m_pCheckBox_ShowMeanDelay->setChecked(false);
 	m_pCheckBox_ShowMeanDelay->setEnabled(enabled);
 	showWindow(m_pCheckBox_ShowWindow->isChecked());
+}
+
+void FlimCalibDlg::writeCurrentPulses(bool toggled)
+{
+
 }
 
 

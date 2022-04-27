@@ -7,44 +7,48 @@
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
 
 //////////////////////// Image Setup /////////////////////////
-#define ADC_RATE					1000 // MegaSamps/sec 순용이가 손댐 원래 500 임.
+#define ADC_RATE					1000 // MegaSamps/sec
 
-#define N_SCANS		                960  // buffer width (should be 4's multiples)
+#define N_SCANS		                960//960  // buffer width (should be 4's multiples)
 #define N_TIMES						270  // buffer height
 
-#define N_PIXELS					1080 // image width (should be 4's multiples)
-#define N_LINES						1080 // image height (+ flying back? 감안? 추후에)
+#define N_PIXELS					4 * N_TIMES // image width (will be deprecated)
 
 //////////////////////// FLIM Setup /////////////////////////
 #define FLIM_LASER_COM_PORT			"COM4"
-#define FLIM_LASER_REP_RATE			991'036.000 // Hz  (FLIM_LASER_FINITE_SAMPS * CRS_SCAN_FREQ)
-#define FLIM_LASER_FINITE_SAMPS		3240  
+#define FLIM_LASER_REP_RATE			990'792.0 // Hz  (FLIM_LASER_FINITE_SAMPS * CRS_SCAN_FREQ)
+#define FLIM_LASER_FINITE_SAMPS		12 * N_TIMES  // (will be deprecated)
 
-#define ALAZAR_TRIG_DELAY			0
+#define ALAZAR_TRIG_DELAY			0  // (will be deprecated)
 
-#define POWER_LEVEL_LINE			"Dev3/port0/line0:7"
-#define POWER_LATCH_LINE			"Dev3/port0/line8"
-#define EM_ENABLE_LINE				"Dev3/port0/line9:11"
-#define MONITORING_LINE				"Dev3/port0/line12:14"
+#define POWER_LEVEL_LINE			"Dev1/port0/line0:7"
+#define POWER_LATCH_LINE			"Dev1/port0/line8"
+#define EM_ENABLE_LINE				"Dev1/port0/line9:11"
+#define MONITORING_LINE				"Dev1/port0/line12:14"
 
-#define NI_PMT_GAIN_CHANNEL		    "Dev3/ao2"
+#define NI_PMT_GAIN_CHANNEL		    "Dev1/ao2"
 
-#define NI_FLIM_TRIG_CHANNEL		"Dev3/ctr2"
-#define NI_FLIM_TRIG_SOURCE			"/Dev3/PFI7" //순용이가 손댐 원래 이거 였음/Dev3/PFI14
+#define NI_FLIM_TRIG_CHANNEL		"Dev1/ctr1"
+#define NI_FLIM_TRIG_SOURCE			"/Dev1/PFI7"
+
+#define AUTO_STOP_AFTER_REC
 
 //////////////////////// Scan Setup /////////////////////////
-#define NI_RESONANT_CHANNEL			"Dev3/ao0"
+#define NI_RESONANT_CHANNEL			"Dev1/ao0"
+#define CRS_PERSISTANT_MODE			true  // true to skip CRS-stabilizing phase
 #define CRS_SCAN_FREQ				305.875
-#define CRS_DIR_FACTOR				1 // 1: unidirectional, 2: bidirectional
+#define CRS_DIR_FACTOR				2 // 1: unidirectional, 2: bidirectional
 #define CRS_TOTAL_PIECES			12
 #define CRS_VALID_PIECES			4
 
-#define NI_GALVO_CHANNEL			"Dev3/ao1"
-#define NI_GAVLO_SOURCE				NI_FLIM_TRIG_SOURCE  //"/Dev3/PFI7"    //순용이가 손댐 원래 이거였음 /Dev3/PFI13
-#define NI_GALVO_START_TRIG_SOURCE	"/Dev3/PFI11"
-#define GALVO_FLYING_BACK			20  // flying-back pixel
+#define NI_GALVO_CHANNEL			"Dev1/ao1"
+#define NI_GALVO_SOURCE				NI_FLIM_TRIG_SOURCE
+#define NI_GALVO_SOURCE_BIDIR		"/Dev1/ChangeDetectionEvent"
+#define NI_GALVO_START_TRIG_SOURCE	"/Dev1/PFI11"
+#define NI_GALVO_TWO_EDGE_LINE		"Dev1/port0/line16"
+#define GALVO_FLYING_BACK			20  // flying-back pixel (should be even)
 
-#define ZABER_PORT					"COM13"
+#define ZABER_PORT					"COM3"
 #define ZABER_MAX_MICRO_RESOLUTION  128 // BENCHTOP_MODE ? 128 : 64; 
 #define ZABER_MICRO_RESOLUTION		32 
 #define ZABER_CONVERSION_FACTOR		1 / 9.375
@@ -56,13 +60,13 @@
 #ifdef RAW_PULSE_WRITE
 #define WRITING_BUFFER_SIZE			500
 #endif
-#define WRITING_IMAGE_SIZE          100	
+#define WRITING_IMAGE_SIZE          400	
 
 ///////////////////// FLIm Processing ///////////////////////
-#define FLIM_CH_START_6				60
-#define GAUSSIAN_FILTER_WIDTH		250
-#define GAUSSIAN_FILTER_STD			60
-#define FLIM_SPLINE_FACTOR			1
+#define FLIM_CH_START_6				60 
+#define GAUSSIAN_FILTER_WIDTH		250  // (will be deprecated)
+#define GAUSSIAN_FILTER_STD			60  // (will be deprecated)
+#define FLIM_SPLINE_FACTOR			1  // (will be deprecated)
 #define INTENSITY_THRES				0.001f
 
 /////////////////////// Visualization ///////////////////////
@@ -96,7 +100,7 @@ enum voltage_range
 class Configuration
 {
 public:
-    explicit Configuration() : imageAveragingFrames(1), flimLaserPower(0), flimEmissionChannel(1) {}
+	explicit Configuration() : imageAveragingFrames(1), biDirScanComp(0.0f), flimLaserPower(0), flimEmissionChannel(1) {}
 	~Configuration() {}
 
 public:
@@ -117,10 +121,12 @@ public:
 		// Image averaging
 		imageAveragingFrames = settings.value("imageAveragingFrames").toInt();
 
+		// Bidirectional scan compensation
+		biDirScanComp = settings.value("biDirScanComp").toFloat();
+
 		// Image stitching
 		imageStichingXStep = settings.value("imageStichingXStep").toInt();
 		imageStichingYStep = settings.value("imageStichingYStep").toInt();
-		imageStichingMisSyncPos = settings.value("imageStichingMisSyncPos").toInt();
 
         // FLIm processing
 		flimBg = settings.value("flimBg").toFloat();
@@ -150,8 +156,8 @@ public:
 		resonantScanVoltage = settings.value("resonantScanVoltage").toFloat();
         galvoScanVoltage = settings.value("galvoScanVoltage").toFloat();
         galvoScanVoltageOffset = settings.value("galvoScanVoltageOffset").toFloat();        		
-		zaberPullbackSpeed = settings.value("zaberPullbackSpeed").toInt();
-		zaberPullbackLength = settings.value("zaberPullbackLength").toInt();
+		zaberPullbackSpeed = settings.value("zaberPullbackSpeed").toFloat();
+		zaberPullbackLength = settings.value("zaberPullbackLength").toFloat();
 
 		settings.endGroup();
 	}
@@ -173,12 +179,14 @@ public:
 
 		// Image averaging
 		settings.setValue("imageAveragingFrames", imageAveragingFrames);
+		
+		// Bidirectional scan compensation
+		settings.setValue("biDirScanComp", QString::number(biDirScanComp, 'f', 2));
 
 		// Image stitching
 		settings.setValue("imageStichingXStep", imageStichingXStep);
 		settings.setValue("imageStichingYStep", imageStichingYStep);
-		settings.setValue("imageStichingMisSyncPos", imageStichingMisSyncPos);
-
+		
         // FLIm processing
 		settings.setValue("flimBg", QString::number(flimBg, 'f', 2));
 		settings.setValue("flimWidthFactor", QString::number(flimWidthFactor, 'f', 2)); 
@@ -207,8 +215,8 @@ public:
 		settings.setValue("resonantScanVoltage", QString::number(resonantScanVoltage, 'f', 2));
         settings.setValue("galvoScanVoltage", QString::number(galvoScanVoltage, 'f', 1));
         settings.setValue("galvoScanVoltageOffset", QString::number(galvoScanVoltageOffset, 'f', 1));        
-		settings.setValue("zaberPullbackSpeed", zaberPullbackSpeed);
-		settings.setValue("zaberPullbackLength", zaberPullbackLength);
+		settings.setValue("zaberPullbackSpeed", QString::number(zaberPullbackSpeed, 'f', 1));
+		settings.setValue("zaberPullbackLength", QString::number(zaberPullbackLength, 'f', 1));
 
 		// Current Time
 		QDate date = QDate::currentDate();
@@ -229,10 +237,12 @@ public:
 	// Image averaging
 	int imageAveragingFrames;
 
+	// Bidirectional scan compensation
+	float biDirScanComp;
+
 	// Image stitching
 	int imageStichingXStep;
 	int imageStichingYStep;
-	int imageStichingMisSyncPos;
 
     // FLIm processing
 	float flimBg;
@@ -258,8 +268,8 @@ public:
     float galvoScanVoltage;
     float galvoScanVoltageOffset;    
 
-	int zaberPullbackSpeed;
-	int zaberPullbackLength;
+	float zaberPullbackSpeed;
+	float zaberPullbackLength;
 
 	// Message callback
 	callback<const char*> msgHandle;

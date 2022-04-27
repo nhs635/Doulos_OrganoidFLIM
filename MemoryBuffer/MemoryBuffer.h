@@ -36,24 +36,16 @@ public:
 
     // Data saving (save wrote data to hard disk)
     bool startSaving();
-
-	//// Circulation
-	//void circulation(int nFramesToCirc);
-
-	//// Buffer operation
-	//uint16_t* pop_front();
-	//void push_back(uint16_t* buffer);
-
 	
+private: // writing threading operation
+	void write();
+
 public:
 	// General inline function
 	inline void setIsRecorded(bool is_recorded) { m_bIsRecorded = is_recorded; }
 	inline void setIsRecording(bool is_recording) { m_bIsRecording = is_recording; }
 	inline void increaseRecordedFrame() { m_nRecordedFrame++; }
-
-private: // writing threading operation
-	void write();
-
+	
 signals:
 	void wroteSingleFrame(int);
 	void finishedBufferAllocation();
@@ -65,6 +57,7 @@ private:
 	QDeviceControlTab* m_pDeviceControlTab;
 
 public:
+	bool m_bIsAllocatedWritingBuffer;
 	bool m_bIsRecorded;
 	bool m_bIsRecording;
 	bool m_bIsSaved;

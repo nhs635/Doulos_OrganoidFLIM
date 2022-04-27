@@ -25,7 +25,7 @@
 
 
 MemoryBuffer::MemoryBuffer(QObject *parent) :
-    QObject(parent),
+    QObject(parent), m_bIsAllocatedWritingBuffer(false),
 	m_bIsRecorded(false), m_bIsRecording(false), 
 	m_bIsSaved(false), m_nRecordedFrame(0)
 {
@@ -43,22 +43,23 @@ MemoryBuffer::~MemoryBuffer()
 void MemoryBuffer::allocateWritingBuffer()
 {	
 	deallocateWritingBuffer();
-
-	int buffer_number = 1; // m_pConfig->imageStichingXStep * m_pConfig->imageStichingYStep;
-	for (int i = 0; i < buffer_number; i++)
 	{
-		float *writingImageBuffer = new float[8 * m_pConfig->imageSize];
-		memset(writingImageBuffer, 0, 6 * m_pConfig->imageSize * sizeof(float));
+		int buffer_number = WRITING_IMAGE_SIZE;
+		for (int i = 0; i < buffer_number; i++)
+		{
+			float *writingImageBuffer = new float[8 * m_pConfig->imageSize];
+			memset(writingImageBuffer, 0, 8 * m_pConfig->imageSize * sizeof(float));
 
-		m_vectorWritingImageBuffer.push_back(writingImageBuffer);
+			m_vectorWritingImageBuffer.push_back(writingImageBuffer);
+		}
+
+		char msg[256];
+		sprintf(msg, "Writing buffers are successfully allocated. [Image size: %zd Bytes]", 8 * buffer_number * m_pConfig->imageSize * sizeof(float));
+		SendStatusMessage(msg, false);
+		SendStatusMessage("Now, recording process is available!", false);
 	}
-				
-	char msg[256];
-	sprintf(msg, "Writing buffers are successfully allocated. [Image size: %zd Bytes]", 8 * buffer_number * m_pConfig->imageSize * sizeof(float));
-	SendStatusMessage(msg, false); 
-	SendStatusMessage("Now, recording process is available!", false);
 
-	//emit finishedBufferAllocation();
+	emit finishedBufferAllocation();
 }
 
 void MemoryBuffer::deallocateWritingBuffer()
@@ -259,10 +260,11 @@ void MemoryBuffer::write()
 			for (int j = 0; j < 4; j++)
 			{
 				// Intensity image
-				float* scanIntensity = m_vectorWritingImageBuffer.at(i) + (0 + j) * roi_flim.width * roi_flim.width;
+				float* scanIntensity = m_vectorWritingImageBuffer.at(i) + (0 + j) * roi_flim.width * roi_flim.height;
 				ippiScale_32f8u_C1R(scanIntensity, sizeof(float) * roi_flim.width, imgObjIntensity.arr.raw_ptr(), sizeof(uint8_t) * roi_flim.width,
 					roi_flim, m_pConfig->flimIntensityRange[j].min, m_pConfig->flimIntensityRange[j].max);
-				if (m_nRecordedFrame == 1)
+				//(*m_pOperationTab->getStreamTab()->getVisualizationTab()->getMedfilt())(imgObjIntensity.arr.raw_ptr());
+				//if (m_nRecordedFrame == 1)
 					imgObjIntensity.qindeximg
 						.save(path + QString("intensity_image_ch_%1_avg_%2_[%3 %4]_%5.bmp").arg(j + 1).arg(m_pConfig->imageAveragingFrames)
 							.arg(m_pConfig->flimIntensityRange[j].min, 2, 'f', 1).arg(m_pConfig->flimIntensityRange[j].max, 2, 'f', 1).arg(i + 1), "bmp");
@@ -273,11 +275,11 @@ void MemoryBuffer::write()
 				//		.arg(m_pConfig->flimIntensityRange[j].min, 2, 'f', 1).arg(m_pConfig->flimIntensityRange[j].max, 2, 'f', 1).arg(i + 1), "bmp");
 
 				// Lifetime image
-				float* scanLifetime = m_vectorWritingImageBuffer.at(i) + (4 + j) * roi_flim.width * roi_flim.width;
+				float* scanLifetime = m_vectorWritingImageBuffer.at(i) + (4 + j) * roi_flim.width * roi_flim.height;
 				ippiScale_32f8u_C1R(scanLifetime, sizeof(float) * roi_flim.width, imgObjLifetime.arr.raw_ptr(), sizeof(uint8_t) * roi_flim.width,
 					roi_flim, m_pConfig->flimLifetimeRange[j].min, m_pConfig->flimLifetimeRange[j].max);
 				//(*m_pOperationTab->getStreamTab()->getVisualizationTab()->getMedfilt())(imgObjLifetime.arr.raw_ptr());
-				if (m_nRecordedFrame == 1)
+				//if (m_nRecordedFrame == 1)
 					imgObjLifetime.qindeximg
 						.save(path + QString("lifetime_image_ch_%1_avg_%2_[%3 %4]_%5.bmp").arg(j + 1).arg(m_pConfig->imageAveragingFrames)
 							.arg(m_pConfig->flimLifetimeRange[j].min, 2, 'f', 1).arg(m_pConfig->flimLifetimeRange[j].max, 2, 'f', 1).arg(i + 1), "bmp");
@@ -292,7 +294,7 @@ void MemoryBuffer::write()
 				memcpy(imgObjTemp.qindeximg.bits(), imgObjIntensity.arr.raw_ptr(), imgObjTemp.qindeximg.byteCount());
 				imgObjTemp.convertRgb();
 				ippsMul_8u_Sfs(imgObjLifetime.qrgbimg.bits(), imgObjTemp.qrgbimg.bits(), imgObjMerged.qrgbimg.bits(), imgObjTemp.qrgbimg.byteCount(), 8);
-				if (m_nRecordedFrame == 1)
+				//if (m_nRecordedFrame == 1)
 					imgObjMerged.qrgbimg 
 						.save(path + QString("merged_image_ch_%1_avg_%2_i[%3 %4]_l[%5 %6]_%7.bmp").arg(j + 1).arg(m_pConfig->imageAveragingFrames)
 							.arg(m_pConfig->flimIntensityRange[j].min, 2, 'f', 1).arg(m_pConfig->flimIntensityRange[j].max, 2, 'f', 1)

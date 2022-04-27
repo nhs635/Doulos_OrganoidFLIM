@@ -23,6 +23,16 @@ class QDeviceControlTab;
 class FLImProcess;
 
 
+class QMySpinBox : public QDoubleSpinBox
+{
+public:
+	explicit QMySpinBox(QWidget *parent = nullptr) : QDoubleSpinBox(parent)
+	{
+		//lineEdit()->setReadOnly(true);
+	}
+	virtual ~QMySpinBox() {}
+};
+
 struct Histogram
 {
 public:
@@ -128,6 +138,8 @@ public slots : // widgets
 
 	void enableRoiSegmentView(bool);
 
+	void writeCurrentPulses(bool);
+
     void captureBackground();
     void captureBackground(const QString &);
 
@@ -167,6 +179,8 @@ private:
 	QCheckBox *m_pCheckBox_RoiSegmentView;
 
     // Widgets for FLIM calibration widgets
+	QPushButton *m_pToggleButton_WriteCurrentPulses;
+
     QPushButton *m_pPushButton_CaptureBackground;
     QLineEdit *m_pLineEdit_Background;
 

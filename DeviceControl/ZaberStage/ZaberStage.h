@@ -24,6 +24,9 @@ public:
 	void DisconnectStage();
 	void StopWaitThread();
 
+	inline bool getIsMoving() { return is_moving; }
+	inline void setIsMoving(bool status) { is_moving = status; }
+
 	void Home(int _stageNumber);
 	void Stop();
 	void MoveAbsoulte(int _stageNumber, double position);
@@ -32,6 +35,7 @@ public:
 
 public:
     callback<void> DidMovedRelative;
+	callback<void> DidMonitoring;
 	callback2<const char*, bool> SendStatusMessage;
 
 private:
@@ -48,7 +52,12 @@ private:
 
 private:
 	std::thread t_wait;
-	bool _running;
+	bool _running_w;
+
+	std::thread t_monitor;
+	bool _running_m;
+
+	bool is_moving;
 };
 
 #endif

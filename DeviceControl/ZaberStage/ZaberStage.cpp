@@ -11,7 +11,8 @@ ZaberStage::ZaberStage() :
 	port(INVALID_HANDLE_VALUE),
 	stage_number(1),
 	microstep_size(ZABER_MICRO_STEPSIZE),
-	_running(false)
+	_running_w(false), _running_m(false),
+	is_moving(false)
 {
 	memset(home, 0, sizeof(home));
 	memset(stop, 0, sizeof(home));
@@ -24,8 +25,13 @@ ZaberStage::~ZaberStage()
 {
 	if (t_wait.joinable())
 	{
-		_running = false;
+		_running_w = false;
 		t_wait.join();
+	}
+	if (t_monitor.joinable())
+	{
+		_running_m = false;
+		t_monitor.join();
 	}
 
 	zb_disconnect(port);
@@ -101,10 +107,10 @@ bool ZaberStage::ConnectStage()
 			DWORD nread;
 			int i = 0; char c;
 
-			_running = true;
-			while (_running)
+			_running_w = true;
+			while (_running_w)
 			{
-				if (!_running)
+				if (!_running_w)
 					break;
 
 				// Read message byte by byte
@@ -124,12 +130,28 @@ bool ZaberStage::ConnectStage()
 					SendStatusMessage(msg, false);
 					i = 0;
 
-					if (received_msg[1] == 21)
+					if ((received_msg[1] == 21) || (received_msg[1] == 20))
 					{
 						SendStatusMessage("Moved relatively.", false);
 						DidMovedRelative();
 					}
 				}
+			}
+		});
+	}
+
+	// Define and execute current pos monitoring thread
+	if (!(t_monitor.joinable()))
+	{
+		t_monitor = std::thread([&]() {
+			_running_m = true;
+			while (_running_m)
+			{
+				if (!_running_m)
+					break;
+
+				std::this_thread::sleep_for(std::chrono::milliseconds(500));
+				if (is_moving) DidMonitoring();
 			}
 		});
 	}
@@ -165,7 +187,7 @@ void ZaberStage::StopWaitThread()
 {
 	if (t_wait.joinable())
 	{
-		_running = false;
+		_running_w = false;
 		t_wait.join();
 	}
 }
@@ -175,6 +197,8 @@ void ZaberStage::Home(int _stageNumber)
 {
 	MoveAbsoulte(_stageNumber, 0);
 	SendStatusMessage("ZABER: Go home!!", false);
+
+	is_moving = true;
 }
 
 
@@ -183,6 +207,8 @@ void ZaberStage::Stop()
 	stop[0] = 1; zb_send(port, stop);
 	stop[0] = 2; zb_send(port, stop);
 	SendStatusMessage("ZABER: Halted the operation intentionally.", false);
+
+	is_moving = false;
 }
 
 
@@ -198,6 +224,8 @@ void ZaberStage::MoveAbsoulte(int _stageNumber, double position)
 	char msg[256];
 	sprintf(msg, "ZABER: Move absolute %d (%.1f mm)", cmd_abs_dist, position);
 	SendStatusMessage(msg, false);
+
+	is_moving = true;
 }
 
 
@@ -213,6 +241,8 @@ void ZaberStage::MoveRelative(int _stageNumber, double position)
 	char msg[256];
 	sprintf(msg, "ZABER: Move relative %d (%.1f mm)", cmd_rel_dist, position);
 	SendStatusMessage(msg, false);
+
+	is_moving = true;
 }
 
 

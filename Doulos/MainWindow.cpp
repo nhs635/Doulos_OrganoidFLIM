@@ -62,14 +62,31 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_pStatusLabel_SyncStatus = new QLabel(QString("FP bufn: %1 / FV bufn: %2 ")
 		.arg(fp_bfn, 3).arg(fv_bfn, 3), this);
 
+	m_pStatusLabel_Acquisition = new QLabel("Acquistion X", this);
+	m_pStatusLabel_Acquisition->setStyleSheet("color: red;");
+	m_pStatusLabel_Acquisition->setAlignment(Qt::AlignCenter);
+	m_pStatusLabel_Recording = new QLabel("Recording X", this);
+	m_pStatusLabel_Recording->setStyleSheet("color: red;");
+	m_pStatusLabel_Recording->setAlignment(Qt::AlignCenter);
+	m_pStatusLabel_StageMoving = new QLabel("Stage Moving X", this);
+	m_pStatusLabel_StageMoving->setStyleSheet("color: red;");
+	m_pStatusLabel_StageMoving->setAlignment(Qt::AlignCenter);
+
     pStatusLabel_Temp1->setFrameStyle(QFrame::Panel | QFrame::Sunken);
     m_pStatusLabel_ImagePos->setFrameStyle(QFrame::Panel | QFrame::Sunken);
 	m_pStatusLabel_SyncStatus->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+
+	m_pStatusLabel_Acquisition->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+	m_pStatusLabel_Recording->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+	m_pStatusLabel_StageMoving->setFrameStyle(QFrame::Panel | QFrame::Sunken);
 
     // then add the widget to the status bar
     statusBar()->addPermanentWidget(pStatusLabel_Temp1, 6);
     statusBar()->addPermanentWidget(m_pStatusLabel_ImagePos, 1);
     statusBar()->addPermanentWidget(m_pStatusLabel_SyncStatus, 2);
+	statusBar()->addPermanentWidget(m_pStatusLabel_Acquisition, 1);
+	statusBar()->addPermanentWidget(m_pStatusLabel_Recording, 1);
+	statusBar()->addPermanentWidget(m_pStatusLabel_StageMoving, 1);
 
     // Set layout
     m_pGridLayout = new QGridLayout;

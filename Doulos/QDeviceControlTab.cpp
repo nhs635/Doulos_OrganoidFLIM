@@ -14,6 +14,9 @@
 #include <DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.h>
 #include <DeviceControl/ResonantScan/ResonantScan.h>
 #include <DeviceControl/GalvoScan/GalvoScan.h>
+#if (CRS_DIR_FACTOR == 2)
+#include <DeviceControl/GalvoScan/TwoEdgeTriggerEnable.h>
+#endif
 #include <DeviceControl/ZaberStage/ZaberStage.h>
 
 #include <MemoryBuffer/MemoryBuffer.h>
@@ -28,6 +31,9 @@ QDeviceControlTab::QDeviceControlTab(QWidget *parent) :
     QDialog(parent), m_pPmtGainControl(nullptr), m_pFlimTrigControl(nullptr),
     m_pIPGPhotonicsLaser(nullptr), m_pFlimCalibDlg(nullptr), 
 	m_pResonantScan(nullptr), m_pGalvoScan(nullptr), m_pZaberStage(nullptr)
+#if (CRS_DIR_FACTOR == 2)
+	, m_pTwoEdgeTriggerEnable(nullptr)
+#endif
 {
 	// Set main window objects
     m_pStreamTab = dynamic_cast<QStreamTab*>(parent);
@@ -325,12 +331,12 @@ void QDeviceControlTab::createZaberStageControl()
 	m_pComboBox_StageNumber->setDisabled(true);
     m_pLineEdit_TargetSpeed = new QLineEdit(pGroupBox_ZaberStageControl);
     m_pLineEdit_TargetSpeed->setFixedWidth(25);
-    m_pLineEdit_TargetSpeed->setText(QString::number(m_pConfig->zaberPullbackSpeed));
+    m_pLineEdit_TargetSpeed->setText(QString::number(m_pConfig->zaberPullbackSpeed, 'f', 1));
 	m_pLineEdit_TargetSpeed->setAlignment(Qt::AlignCenter);
 	m_pLineEdit_TargetSpeed->setDisabled(true);
     m_pLineEdit_TravelLength = new QLineEdit(pGroupBox_ZaberStageControl);
     m_pLineEdit_TravelLength->setFixedWidth(25);
-    m_pLineEdit_TravelLength->setText(QString::number(m_pConfig->zaberPullbackLength));
+    m_pLineEdit_TravelLength->setText(QString::number(m_pConfig->zaberPullbackLength, 'f', 1));
 	m_pLineEdit_TravelLength->setAlignment(Qt::AlignCenter);
 	m_pLineEdit_TravelLength->setDisabled(true);
 
@@ -728,6 +734,20 @@ void QDeviceControlTab::connectGalvanoMirror(bool toggled)
 
         m_pStreamTab->setYLinesWidgets(false);
 
+#if (CRS_DIR_FACTOR == 2)
+		// Create two edge detection enable control objects
+		if (!m_pTwoEdgeTriggerEnable)
+		{
+			m_pTwoEdgeTriggerEnable = new TwoEdgeTriggerEnable;
+			m_pTwoEdgeTriggerEnable->SendStatusMessage += [&](const char* msg, bool is_error) {
+				QString qmsg = QString::fromUtf8(msg);
+				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
+			};
+		}
+
+		m_pTwoEdgeTriggerEnable->lines = NI_GALVO_TWO_EDGE_LINE;
+#endif
+
         // Create Galvano mirror control objects
         if (!m_pGalvoScan)
         {
@@ -738,19 +758,30 @@ void QDeviceControlTab::connectGalvanoMirror(bool toggled)
             };
         }
 
+		m_pGalvoScan->sourceTerminal = (CRS_DIR_FACTOR == 1) ? NI_GALVO_SOURCE : NI_GALVO_SOURCE_BIDIR;
+		
 		m_pGalvoScan->triggerSource = NI_GALVO_START_TRIG_SOURCE;
         m_pGalvoScan->pp_voltage = m_pLineEdit_PeakToPeakVoltage->text().toDouble();
         m_pGalvoScan->offset = m_pLineEdit_OffsetVoltage->text().toDouble();        
-		m_pGalvoScan->step = m_pConfig->nLines + GALVO_FLYING_BACK;
+		m_pGalvoScan->step = m_pConfig->nLines + GALVO_FLYING_BACK + 2;
 
         // Initializing
+#if (CRS_DIR_FACTOR == 1)
 		if (!m_pGalvoScan->initialize())
+#elif (CRS_DIR_FACTOR == 2)
+		if (!m_pTwoEdgeTriggerEnable->initialize() || !m_pGalvoScan->initialize())
+#endif
 		{
 			m_pCheckBox_GalvoScanControl->setChecked(false);
 			return;
 		}
 		else
-			m_pGalvoScan->start();		
+		{
+#if (CRS_DIR_FACTOR == 2)
+			m_pTwoEdgeTriggerEnable->start();
+#endif
+			m_pGalvoScan->start();
+		}
     }
     else
     {
@@ -761,6 +792,16 @@ void QDeviceControlTab::connectGalvanoMirror(bool toggled)
             delete m_pGalvoScan;
             m_pGalvoScan = nullptr;
         }
+
+#if (CRS_DIR_FACTOR == 2)
+		// Delete two edge detection enable control objects
+		if (m_pTwoEdgeTriggerEnable)
+		{
+			m_pTwoEdgeTriggerEnable->stop();
+			delete m_pTwoEdgeTriggerEnable;
+			m_pTwoEdgeTriggerEnable = nullptr;
+		}
+#endif
 
         // Set enabled false for Galvano mirror control widgets
 		m_pLabel_ScanVoltage->setEnabled(true);
@@ -815,17 +856,26 @@ void QDeviceControlTab::connectZaberStage(bool toggled)
 
 		// Set callback function
 		m_pZaberStage->DidMovedRelative += [&]() {
+			std::this_thread::sleep_for(std::chrono::milliseconds(250));
+			m_pZaberStage->setIsMoving(false);
 			if (m_pStreamTab->getOperationTab()->m_pMemoryBuffer->m_bIsRecording)
-			{
 				if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
-				{					
-					m_pCheckBox_FlimLaserTrigControl->setChecked(true);
+					getStreamTab()->m_bIsStageTransition = false;
+			//if (m_pStreamTab->getOperationTab()->m_pMemoryBuffer->m_bIsRecording)
+			//{
+			//	if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
+			//	{					
+			//		m_pCheckBox_FlimLaserTrigControl->setChecked(true);
 
-					std::unique_lock<std::mutex> mlock(m_mtxStageScan);
-					mlock.unlock();
-					m_cvStageScan.notify_one();
-				}
-			}
+			//		//std::unique_lock<std::mutex> mlock(m_mtxStageScan);
+			//		//mlock.unlock();
+			//		//m_cvStageScan.notify_one();
+			//	}
+			//}
+		};
+
+		m_pZaberStage->DidMonitoring += [&]() {
+			emit monitoring();
 		};
 
 		// Set target speed first
@@ -845,9 +895,17 @@ void QDeviceControlTab::connectZaberStage(bool toggled)
 		m_pLabel_TargetSpeed->setEnabled(true);
 
 		m_pStreamTab->getImageStitchingCheckBox()->setEnabled(true);
+
+		// signal & slot connection
+		connect(this, SIGNAL(startStageScan(int, double)), this, SLOT(stageScan(int, double)));
+		//connect(this, SIGNAL(monitoring()), this, SLOT(getCurrentPosition()));
 	}
 	else
 	{
+		// signal & slot disconnection
+		disconnect(this, SIGNAL(startStageScan(int, double)), 0, 0);
+		//disconnect(this, SIGNAL(monitoring()), 0, 0);
+
 		// Set enable false for Zaber stage control widgets
 		if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
 			m_pStreamTab->getImageStitchingCheckBox()->setChecked(false);
@@ -890,7 +948,7 @@ void QDeviceControlTab::moveRelative()
 void QDeviceControlTab::setTargetSpeed(const QString & str)
 {
 	m_pZaberStage->SetTargetSpeed(m_pComboBox_StageNumber->currentIndex() + 1, str.toDouble());
-	m_pConfig->zaberPullbackSpeed = str.toInt();
+	m_pConfig->zaberPullbackSpeed = str.toFloat();
 }
 
 void QDeviceControlTab::changeZaberPullbackLength(const QString &str)
@@ -906,4 +964,12 @@ void QDeviceControlTab::home()
 void QDeviceControlTab::stop()
 {
 	m_pZaberStage->Stop();
+}
+
+void QDeviceControlTab::stageScan(int dev_num, double length)
+{
+	if (length != 0)
+		m_pZaberStage->MoveRelative(dev_num, length);
+	else
+		m_pZaberStage->Home(dev_num);
 }

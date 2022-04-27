@@ -7,7 +7,7 @@ using namespace std;
 AlazarDAQ::AlazarDAQ() :
     SystemId(1), nChannels(1), nScans(1000), nAlines(1024),
     VoltRange1(INPUT_RANGE_PM_400_MV), VoltRange2(INPUT_RANGE_PM_400_MV),
-    AcqRate(SAMPLE_RATE_500MSPS), TriggerDelay(0), TriggerSlope(TRIGGER_SLOPE_POSITIVE),
+    AcqRate(SAMPLE_RATE_1000MSPS), TriggerDelay(0), TriggerSlope(TRIGGER_SLOPE_POSITIVE),
     UseExternalClock(false), UseAutoTrigger(false), frameRate(0.0),
     _dirty(true), _running(false), boardHandle(nullptr)
 {
@@ -128,6 +128,7 @@ bool AlazarDAQ::initialize()
 			TRIG_ENGINE_J,			// U32 -- trigger engine id
 			TRIG_EXTERNAL,			// U32 -- trigger source id
 			TRIGGER_SLOPE_POSITIVE,	// U32 -- trigger slope id
+			//TRIGGER_SLOPE_NEGATIVE,
 			128 + (int)(128 * 0.5),	// Utrigger32 -- trigger level from 0 (-range) to 255 (+range)
 			TRIG_ENGINE_K,			// U32 -- trigger engine id
 			TRIG_DISABLE,			// U32 -- trigger source id for engine K
@@ -154,7 +155,7 @@ bool AlazarDAQ::initialize()
 	}
 
 	// Set trigger delay as required.
-	retCode = AlazarSetTriggerDelay(boardHandle, TriggerDelay);
+	retCode = AlazarSetTriggerDelay(boardHandle, TriggerDelay); //TriggerDelay´Â sample °¹¼ö·Î ÁöÁ¤ÇØÁà¾ß ÇÔ triggerDelay_sec * samplesPerSec + 0.5
 	if (retCode != ApiSuccess)
 	{
 		dumpError(retCode, "[AlazarDAQ] Error: AlazarSetTriggerDelay failed: ");

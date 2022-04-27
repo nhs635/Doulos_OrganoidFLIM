@@ -118,8 +118,8 @@ void QOperationTab::operateDataAcquisition(bool toggled)
             {
                 m_pToggleButton_Acquisition->setText("Stop &Acquisition");
 
-                ///m_pToggleButton_Acquisition->setDisabled(true);
-                m_pToggleButton_Recording->setEnabled(true);
+                m_pToggleButton_Acquisition->setDisabled(true);
+                m_pToggleButton_Recording->setDisabled(true);
 
                 std::thread allocate_writing_buffer([&]() {
                     m_pMemoryBuffer->allocateWritingBuffer();
@@ -136,21 +136,24 @@ void QOperationTab::operateDataAcquisition(bool toggled)
 			m_pStreamTab->setYLinesWidgets(false);
 
 			// Set stitching mode
-			if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
+			//if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
 			{
-				m_pStreamTab->getXStepLabel()->setDisabled(true);
-				m_pStreamTab->getYStepLabel()->setDisabled(true);
-				m_pStreamTab->getXStepLineEdit()->setDisabled(true);
-				m_pStreamTab->getYStepLineEdit()->setDisabled(true);
+				m_pStreamTab->getXStepLabel()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
+				m_pStreamTab->getYStepLabel()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
+				m_pStreamTab->getXStepLineEdit()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
+				m_pStreamTab->getYStepLineEdit()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
 			}
 			
 			// Set Alazar Control widgets
 			m_pStreamTab->getDeviceControlTab()->getAlazarDigitizerControl()->setChecked(true);
 
 			// Start Resonant & Galvo-scan & Apply FLIm triggers & PMT gain voltage
-			m_pStreamTab->getDeviceControlTab()->getResonantScanControl()->setChecked(true);
-			m_pStreamTab->getDeviceControlTab()->getResonantScanVoltageControl()->setChecked(true);
-			m_pStreamTab->getDeviceControlTab()->getResonantScanVoltageSpinBox()->setValue(m_pConfig->resonantScanVoltage);
+			if (!CRS_PERSISTANT_MODE)
+			{
+				m_pStreamTab->getDeviceControlTab()->getResonantScanControl()->setChecked(true);
+				m_pStreamTab->getDeviceControlTab()->getResonantScanVoltageControl()->setChecked(true);
+				m_pStreamTab->getDeviceControlTab()->getResonantScanVoltageSpinBox()->setValue(m_pConfig->resonantScanVoltage);
+			}
 			m_pStreamTab->getDeviceControlTab()->getGalvoScanControl()->setChecked(true);
 			m_pStreamTab->getDeviceControlTab()->getFlimLaserControl()->setChecked(true);
 			m_pStreamTab->getDeviceControlTab()->getPmtGainControl()->setChecked(true);						
@@ -172,10 +175,10 @@ void QOperationTab::operateDataAcquisition(bool toggled)
         m_pStreamTab->m_pThreadFlimProcess->stopThreading();
         m_pStreamTab->m_pThreadVisualization->stopThreading();
 
-		std::thread deallocate_writing_buffer([&]() {
-			m_pMemoryBuffer->deallocateWritingBuffer();
-		});
-		deallocate_writing_buffer.detach();
+		///std::thread deallocate_writing_buffer([&]() {
+		///	m_pMemoryBuffer->deallocateWritingBuffer();
+		///});
+		///deallocate_writing_buffer.detach();
 
         m_pToggleButton_Acquisition->setText("Start &Acquisition");
         m_pToggleButton_Recording->setDisabled(true);
@@ -184,8 +187,11 @@ void QOperationTab::operateDataAcquisition(bool toggled)
 		m_pStreamTab->getDeviceControlTab()->getFlimLaserTrigControl()->setChecked(false);
 
 		// Stop Resonant & Galvo-scan & Disapply PMT gain voltage
-		m_pStreamTab->getDeviceControlTab()->getResonantScanControl()->setChecked(false);
-		m_pStreamTab->getDeviceControlTab()->getResonantScanVoltageControl()->setChecked(false);
+		if (!CRS_PERSISTANT_MODE)
+		{
+			m_pStreamTab->getDeviceControlTab()->getResonantScanControl()->setChecked(false);
+			m_pStreamTab->getDeviceControlTab()->getResonantScanVoltageControl()->setChecked(false);
+		}
 		m_pStreamTab->getDeviceControlTab()->getGalvoScanControl()->setChecked(false);
 		m_pStreamTab->getDeviceControlTab()->getFlimLaserControl()->setChecked(false);		
 		m_pStreamTab->getDeviceControlTab()->getPmtGainControl()->setChecked(false);
@@ -194,12 +200,12 @@ void QOperationTab::operateDataAcquisition(bool toggled)
 		m_pStreamTab->getDeviceControlTab()->getAlazarDigitizerControl()->setChecked(false);
 
 		// Set stitching mode
-		if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
+		//if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
 		{
-			m_pStreamTab->getXStepLabel()->setEnabled(true);
-			m_pStreamTab->getYStepLabel()->setEnabled(true);
-			m_pStreamTab->getXStepLineEdit()->setEnabled(true);
-			m_pStreamTab->getYStepLineEdit()->setEnabled(true);
+			m_pStreamTab->getXStepLabel()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
+			m_pStreamTab->getYStepLabel()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
+			m_pStreamTab->getXStepLineEdit()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
+			m_pStreamTab->getYStepLineEdit()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
 		}
 
 		// Set image size widgets
@@ -241,14 +247,18 @@ void QOperationTab::operateDataRecording(bool toggled)
 		else
 			m_pProgressBar->setRange(0, 1);
 		m_pProgressBar->setValue(0);  
+
+#ifdef AUTO_STOP_AFTER_REC
+		// Automatically stop acquistion to avoid potential photobleaching
+		m_pToggleButton_Acquisition->setChecked(false);
+#endif
     }
 }
 
 void QOperationTab::operateDataSaving(bool toggled)
 {
     if (toggled)
-    {
-		printf("m_pMemoryBuffer: %p\n", m_pMemoryBuffer);
+    {		
 		if (m_pMemoryBuffer)
 		{
 			if (m_pMemoryBuffer->startSaving())

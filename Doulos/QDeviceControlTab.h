@@ -21,19 +21,12 @@ class FlimCalibDlg;
 
 class ResonantScan;
 class GalvoScan;
+#if (CRS_DIR_FACTOR == 2)
+class TwoEdgeTriggerEnable;
+#endif
 class ZaberStage;
 
 class QImageView;
-
-class QMySpinBox : public QDoubleSpinBox
-{
-public:
-    explicit QMySpinBox(QWidget *parent = nullptr) : QDoubleSpinBox(parent)
-    {
-        //lineEdit()->setReadOnly(true);
-    }
-    virtual ~QMySpinBox() {}
-};
 
 
 class QDeviceControlTab : public QDialog
@@ -70,6 +63,7 @@ public: ////////////////////////////////////////////////////////////////////////
     inline QCheckBox* getGalvoScanControl() const { return m_pCheckBox_GalvoScanControl; }
 	inline GalvoScan* getGalvoScan() const { return m_pGalvoScan; }
 
+	inline QCheckBox* getZaberStageControl() const { return m_pCheckBox_ZaberStageControl; }
 	inline ZaberStage* getZaberStage() const { return m_pZaberStage; }
 
 private: ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -114,11 +108,12 @@ private slots: /////////////////////////////////////////////////////////////////
 	void changeZaberPullbackLength(const QString &);
 	void home();
 	void stop();
+	void stageScan(int, double);
+	//void getCurrentPosition();
 
-// Variables ////////////////////////////////////////////
-public: // Stage scanning
-	std::mutex m_mtxStageScan;
-	std::condition_variable m_cvStageScan;
+signals: ////////////////////////////////////////////////////////////////////////////////////////////////
+	void startStageScan(int, double);
+	void monitoring();
 
 private: ////////////////////////////////////////////////////////////////////////////////////////////////
     // PMT Gain Control & FLIm Laser Triggering
@@ -131,6 +126,9 @@ private: ///////////////////////////////////////////////////////////////////////
     // Resonant & Galvo Scanner Control
 	ResonantScan* m_pResonantScan;
     GalvoScan* m_pGalvoScan;	
+#if (CRS_DIR_FACTOR == 2)
+	TwoEdgeTriggerEnable* m_pTwoEdgeTriggerEnable;
+#endif
 
 	// Zaber Stage Control;
 	ZaberStage* m_pZaberStage;

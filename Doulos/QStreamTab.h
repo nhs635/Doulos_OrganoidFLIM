@@ -18,7 +18,7 @@ class QVisualizationTab;
 class ThreadManager;
 class FLImProcess;
 
-#define N_LINES_135		135
+#define N_LINES_136		136
 #define N_LINES_270		270
 #define N_LINES_540		540
 #define N_LINES_1080	1080
@@ -64,12 +64,13 @@ private:
     void setVisualizationCallback();
 
 private slots:
+	void onTimerMonitoring();
     void changeYLines(int);
 	void changeAveragingFrame(const QString &);
+	void changeBiDirScanComp(double);
 	void enableStitchingMode(bool);
 	void changeStitchingXStep(const QString &);
 	void changeStitchingYStep(const QString &);
-	void changeStitchingMisSyncPos(const QString &);
     void processMessage(QString, bool);
 
 signals:
@@ -89,6 +90,20 @@ private:
 	QListWidget *m_pListWidget_MsgWnd;
 
 public:
+	// Writing state
+	int m_nWrittenSamples;
+	int m_nAcquiredFrames;
+	int m_nAverageCount;
+
+	// CRS nonlinearity compensation idx
+	np::FloatArray2 m_pCRSCompIdx;
+
+	// Stitching flag
+	bool m_bIsStageTransition;
+	int m_nImageCount;
+
+
+public:
 	// Image buffer
 	np::FloatArray2 m_pTempIntensity;
 	np::FloatArray2 m_pTempLifetime;
@@ -103,6 +118,9 @@ private:
     // Thread synchronization objects
     SyncObject<float> m_syncFlimProcessing;
     SyncObject<float> m_syncFlimVisualization;
+
+	// Monitoring timer
+	QTimer *m_pTimer_Monitoring;
 	
 private:
     // Layout
@@ -117,7 +135,7 @@ private:
 
     // Y lines radio buttons
     QLabel *m_pLabel_YLines;
-    QRadioButton *m_pRadioButton_135;
+    QRadioButton *m_pRadioButton_136;
     QRadioButton *m_pRadioButton_270;
     QRadioButton *m_pRadioButton_540;
     QRadioButton *m_pRadioButton_1080;
@@ -129,6 +147,12 @@ private:
 
 	QLabel *m_pLabel_AcquisitionStatus;
 	
+#if (CRS_DIR_FACTOR == 2)
+	// Bidirectional scan compensation
+	QLabel *m_pLabel_BiDirScanComp;
+	QDoubleSpinBox *m_pDoubleSpinBox_BiDirScanComp;
+#endif
+
 	// CRS nonlinearity compensation
 	QCheckBox *m_pCheckBox_CRSNonlinearityComp;
 
@@ -138,8 +162,6 @@ private:
 	QLineEdit *m_pLineEdit_YStep;
 	QLabel *m_pLabel_XStep;
 	QLabel *m_pLabel_YStep;
-	QLineEdit *m_pLineEdit_MisSyncPos;
-	QLabel *m_pLabel_MisSyncPos;
 };
 
 #endif // QSTREAMTAB_H

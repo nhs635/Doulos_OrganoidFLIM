@@ -71,6 +71,7 @@ SOURCES += DeviceControl/FLImControl/PmtGainControl.cpp \
     DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.cpp \
     DeviceControl/ResonantScan/ResonantScan.cpp \
     DeviceControl/GalvoScan/GalvoScan.cpp \
+    DeviceControl/GalvoScan/TwoEdgeTriggerEnable.cpp \
     DeviceControl/ZaberStage/ZaberStage.cpp \
     DeviceControl/ZaberStage/zb_serial.cpp
 
@@ -99,6 +100,7 @@ HEADERS += DeviceControl/FLImControl/PmtGainControl.h \
     DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.h \
     DeviceControl/ResonantScan/ResonantScan.h \
     DeviceControl/GalvoScan/GalvoScan.h \
+    DeviceControl/GalvoScan/TwoEdgeTriggerEnable.h \
     DeviceControl/ZaberStage/ZaberStage.h \
     DeviceControl/ZaberStage/zb_serial.h \
     DeviceControl/QSerialComm.h
