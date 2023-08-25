@@ -34,13 +34,13 @@ void FLImProcess::setParameters(Configuration* pConfig)
     _params.samp_intv = 1000.0f / (float)ADC_RATE;
     _params.width_factor = 2.0f;
 
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 4; i++)
     {
         _params.ch_start_ind[i] = pConfig->flimChStartInd[i];
         if (i != 0)
              _params.delay_offset[i - 1] = pConfig->flimDelayOffset[i - 1];
     }
-    _params.ch_start_ind[5] = _params.ch_start_ind[4] + FLIM_CH_START_6;
+    _params.ch_start_ind[4] = _params.ch_start_ind[3] + FLIM_CH_START_5;
 }
 
 void FLImProcess::saveMaskData(QString maskpath)

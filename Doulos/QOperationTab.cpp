@@ -107,24 +107,25 @@ void QOperationTab::operateDataAcquisition(bool toggled)
 {
     if (toggled) // Start Data Acquisition
     {
-        if (m_pDataAcquisition->InitializeAcquistion())
+        if (m_pDataAcquisition->InitializeAcquistion(m_pStreamTab->getCurrentModality()))
         {
             // Start Thread Process
             m_pStreamTab->m_pThreadVisualization->startThreading();
-            m_pStreamTab->m_pThreadFlimProcess->startThreading();			
+			if (m_pStreamTab->getCurrentModality())
+				m_pStreamTab->m_pThreadFlimProcess->startThreading();			
 
             // Start Data Acquisition
-            if (m_pDataAcquisition->StartAcquisition())
+            if (m_pDataAcquisition->StartAcquisition(m_pStreamTab->getCurrentModality()))
             {
                 m_pToggleButton_Acquisition->setText("Stop &Acquisition");
-
-                m_pToggleButton_Acquisition->setDisabled(true);
-                m_pToggleButton_Recording->setDisabled(true);
-
-                std::thread allocate_writing_buffer([&]() {
-                    m_pMemoryBuffer->allocateWritingBuffer();
-                });
-                allocate_writing_buffer.detach();
+								
+				m_pToggleButton_Acquisition->setDisabled(true);
+				m_pToggleButton_Recording->setDisabled(true);
+				
+				std::thread allocate_writing_buffer([&]() {
+					m_pMemoryBuffer->allocateWritingBuffer(m_pStreamTab->getCurrentModality());
+				});
+				allocate_writing_buffer.detach();
             }
 			else
 			{
@@ -135,32 +136,38 @@ void QOperationTab::operateDataAcquisition(bool toggled)
 			// Set image size widgets
 			m_pStreamTab->setYLinesWidgets(false);
 
-			// Set stitching mode
-			//if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
+			if (m_pStreamTab->getCurrentModality())
 			{
-				m_pStreamTab->getXStepLabel()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
-				m_pStreamTab->getYStepLabel()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
-				m_pStreamTab->getXStepLineEdit()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
-				m_pStreamTab->getYStepLineEdit()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
-			}
-			
-			// Set Alazar Control widgets
-			m_pStreamTab->getDeviceControlTab()->getAlazarDigitizerControl()->setChecked(true);
+				// Set stitching mode
+				//if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
+				{
+					m_pStreamTab->getXStepLabel()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
+					m_pStreamTab->getYStepLabel()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
+					m_pStreamTab->getXStepLineEdit()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
+					m_pStreamTab->getYStepLineEdit()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
+				}
 
-			// Start Resonant & Galvo-scan & Apply FLIm triggers & PMT gain voltage
-			if (!CRS_PERSISTANT_MODE)
+				// Set Alazar Control widgets
+				m_pStreamTab->getDeviceControlTab()->getAlazarDigitizerControl()->setChecked(true);
+
+				// Start Galvo-scan & Apply FLIm triggers & PMT gain voltage				
+				m_pStreamTab->getDeviceControlTab()->getGalvoScanControl()->setChecked(true);
+				m_pStreamTab->getDeviceControlTab()->getFlimLaserControl()->setChecked(true);
+				m_pStreamTab->getDeviceControlTab()->getPmtGainControl()->setChecked(true);
+
+				// Start laser triggering
+				m_pStreamTab->getDeviceControlTab()->getFlimLaserTrigControl()->setChecked(true);
+				std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+				// Start resonant mirror triggering
+				//m_pStreamTab->getDeviceControlTab()->getResonantScanControl()->setChecked(true);
+			}
+			else
 			{
-				m_pStreamTab->getDeviceControlTab()->getResonantScanControl()->setChecked(true);
-				m_pStreamTab->getDeviceControlTab()->getResonantScanVoltageControl()->setChecked(true);
-				m_pStreamTab->getDeviceControlTab()->getResonantScanVoltageSpinBox()->setValue(m_pConfig->resonantScanVoltage);
+				m_pStreamTab->updateCmosGainExposure();
+				m_pStreamTab->getDeviceControlTab()->getRadioButtonBrightField()->setChecked(true);
+				m_pStreamTab->getDeviceControlTab()->setDpcIllumPattern(1);
 			}
-			m_pStreamTab->getDeviceControlTab()->getGalvoScanControl()->setChecked(true);
-			m_pStreamTab->getDeviceControlTab()->getFlimLaserControl()->setChecked(true);
-			m_pStreamTab->getDeviceControlTab()->getPmtGainControl()->setChecked(true);						
-			std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-			// Start laser triggering
-			m_pStreamTab->getDeviceControlTab()->getFlimLaserTrigControl()->setChecked(true);
         }
 		else
 		{
@@ -171,8 +178,9 @@ void QOperationTab::operateDataAcquisition(bool toggled)
     else // Stop Data Acquisition
     {
         // Stop Thread Process
-        m_pDataAcquisition->StopAcquisition();
-        m_pStreamTab->m_pThreadFlimProcess->stopThreading();
+        m_pDataAcquisition->StopAcquisition(m_pStreamTab->getCurrentModality());
+		if (m_pStreamTab->getCurrentModality())
+			m_pStreamTab->m_pThreadFlimProcess->stopThreading();
         m_pStreamTab->m_pThreadVisualization->stopThreading();
 
 		///std::thread deallocate_writing_buffer([&]() {
@@ -183,34 +191,41 @@ void QOperationTab::operateDataAcquisition(bool toggled)
         m_pToggleButton_Acquisition->setText("Start &Acquisition");
         m_pToggleButton_Recording->setDisabled(true);
 		
-		// Stop laser triggering
-		m_pStreamTab->getDeviceControlTab()->getFlimLaserTrigControl()->setChecked(false);
-
-		// Stop Resonant & Galvo-scan & Disapply PMT gain voltage
-		if (!CRS_PERSISTANT_MODE)
+		if (m_pStreamTab->getCurrentModality())
 		{
-			m_pStreamTab->getDeviceControlTab()->getResonantScanControl()->setChecked(false);
-			m_pStreamTab->getDeviceControlTab()->getResonantScanVoltageControl()->setChecked(false);
-		}
-		m_pStreamTab->getDeviceControlTab()->getGalvoScanControl()->setChecked(false);
-		m_pStreamTab->getDeviceControlTab()->getFlimLaserControl()->setChecked(false);		
-		m_pStreamTab->getDeviceControlTab()->getPmtGainControl()->setChecked(false);
-				
-		// Set Alazar Control widgets
-		m_pStreamTab->getDeviceControlTab()->getAlazarDigitizerControl()->setChecked(false);
+			// Stop resonant mirror triggering
+			///m_pStreamTab->getDeviceControlTab()->getResonantScanControl()->setChecked(false);
 
-		// Set stitching mode
-		//if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
+			// Stop laser triggering
+			m_pStreamTab->getDeviceControlTab()->getFlimLaserTrigControl()->setChecked(false);
+
+			// Stop Resonant & Galvo-scan & Disapply PMT gain voltage	
+			m_pStreamTab->getDeviceControlTab()->getGalvoScanControl()->setChecked(false);
+			m_pStreamTab->getDeviceControlTab()->getFlimLaserControl()->setChecked(false);
+			m_pStreamTab->getDeviceControlTab()->getPmtGainControl()->setChecked(false);
+
+			// Set Alazar Control widgets
+			m_pStreamTab->getDeviceControlTab()->getAlazarDigitizerControl()->setChecked(false);
+
+			// Set stitching mode
+			///if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
+			{
+				m_pStreamTab->getXStepLabel()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
+				m_pStreamTab->getYStepLabel()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
+				m_pStreamTab->getXStepLineEdit()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
+				m_pStreamTab->getYStepLineEdit()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
+			}
+
+			// Set image size widgets
+			if (!m_pStreamTab->getDeviceControlTab()->getGalvoScanControl()->isChecked())
+				m_pStreamTab->setYLinesWidgets(true);
+		}
+		else
 		{
-			m_pStreamTab->getXStepLabel()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
-			m_pStreamTab->getYStepLabel()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
-			m_pStreamTab->getXStepLineEdit()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
-			m_pStreamTab->getYStepLineEdit()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
-		}
-
-		// Set image size widgets
-		if (!m_pStreamTab->getDeviceControlTab()->getGalvoScanControl()->isChecked())
+			m_pStreamTab->getDeviceControlTab()->getRadioButtonOff()->setChecked(true);
+			m_pStreamTab->getDeviceControlTab()->setDpcIllumPattern(0);
 			m_pStreamTab->setYLinesWidgets(true);
+		}
     }
 }
 

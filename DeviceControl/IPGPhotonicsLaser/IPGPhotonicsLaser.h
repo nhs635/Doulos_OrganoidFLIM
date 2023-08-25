@@ -24,7 +24,7 @@ public:
     // RS232 Commands
     void ReadStatus();
 
-    void EnableEmission(bool enabled);
+    bool EnableEmission(bool enabled);
 
     void ReadLowerDeckTemp();
     void ReadCaseTemp();

@@ -16,8 +16,7 @@ GalvoScan::GalvoScan() :
     max_rate(2000.0),
 	data(nullptr),
 	physicalChannel(NI_GALVO_CHANNEL),
-    sourceTerminal(NI_GALVO_SOURCE),
-	
+    sourceTerminal(NI_GALVO_SOURCE),	
 	triggerSource(NI_GALVO_START_TRIG_SOURCE)
 {
 }
@@ -43,14 +42,14 @@ bool GalvoScan::initialize()
     int sample_mode = DAQmx_Val_ContSamps;
 
 	// Bi-directional slow scan
-	//data = new double[2 * step];	
-	//for (int i = 0; i < step; i++)
-	//{
-	//	data[i] = (double)i * (pp_voltage * 2 / (step - 1)) - pp_voltage + offset;
-	//	data[2 * step - 1 - i] = data[i];
-	//}
-	//step = 2 * step;
-	//	
+	/*data = new double[2 * step];	
+	for (int i = 0; i < step; i++)
+	{
+		data[i] = (double)i * (pp_voltage * 2 / (step - 1)) - pp_voltage + offset;
+		data[2 * step - 1 - i] = data[i];
+	}
+	step = 2 * step;
+		*/
 	// Uni-directional slow scan pattern
 	data = new double[step];
 	for (int i = 0; i < GALVO_FLYING_BACK; i++)

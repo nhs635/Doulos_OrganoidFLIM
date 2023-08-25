@@ -12,12 +12,15 @@
 #include <DeviceControl/FLImControl/PmtGainControl.h>
 #include <DeviceControl/FLImControl/FlimTrigger.h>
 #include <DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.h>
+
+#include <DeviceControl/ResonantScan/PulseTrainGenerator.h>
 #include <DeviceControl/ResonantScan/ResonantScan.h>
 #include <DeviceControl/GalvoScan/GalvoScan.h>
 #if (CRS_DIR_FACTOR == 2)
 #include <DeviceControl/GalvoScan/TwoEdgeTriggerEnable.h>
 #endif
-#include <DeviceControl/ZaberStage/ZaberStage.h>
+#include <DeviceControl/NanoscopeStage/NanoscopeStage.h>
+#include <DeviceControl/DpcIllumination/DpcIllumination.h>
 
 #include <MemoryBuffer/MemoryBuffer.h>
 
@@ -28,9 +31,9 @@
 
 
 QDeviceControlTab::QDeviceControlTab(QWidget *parent) :
-    QDialog(parent), m_pPmtGainControl(nullptr), m_pFlimTrigControl(nullptr),
+    QDialog(parent), m_pPmtGainControl(nullptr), m_pFlimTrigControlLaser(nullptr), m_pFlimTrigControlDAQ(nullptr),
     m_pIPGPhotonicsLaser(nullptr), m_pFlimCalibDlg(nullptr), 
-	m_pResonantScan(nullptr), m_pGalvoScan(nullptr), m_pZaberStage(nullptr)
+	m_pGalvoScan(nullptr), m_pNanoscopeStage(nullptr), m_pDpcIllumControl(nullptr)
 #if (CRS_DIR_FACTOR == 2)
 	, m_pTwoEdgeTriggerEnable(nullptr)
 #endif
@@ -52,7 +55,8 @@ QDeviceControlTab::QDeviceControlTab(QWidget *parent) :
 	createFlimLaserControl();
     createFlimCalibControl();
     createScanControl();
-	createZaberStageControl();
+	createNanoscopeStageControl();
+	createDpcIlluminationControl();
 	
     // Set layout
     setLayout(m_pVBoxLayout);
@@ -62,10 +66,11 @@ QDeviceControlTab::~QDeviceControlTab()
 {
     if (m_pCheckBox_PmtGainControl->isChecked()) m_pCheckBox_PmtGainControl->setChecked(false);
     if (m_pCheckBox_FlimLaserTrigControl->isChecked()) m_pCheckBox_FlimLaserTrigControl->setChecked(false);
-    if (m_pCheckBox_FlimLaserControl->isChecked()) m_pCheckBox_FlimLaserControl->setChecked(false);
-	if (m_pCheckBox_ResonantScanControl->isChecked()) m_pCheckBox_ResonantScanControl->setChecked(false);
+    if (m_pCheckBox_FlimLaserControl->isChecked()) m_pCheckBox_FlimLaserControl->setChecked(false);	
 	if (m_pCheckBox_GalvoScanControl->isChecked()) m_pCheckBox_GalvoScanControl->setChecked(false);
-	if (m_pCheckBox_ZaberStageControl->isChecked()) m_pCheckBox_ZaberStageControl->setChecked(false);
+	if (m_pCheckBox_NanoscopeStageControl->isChecked()) m_pCheckBox_NanoscopeStageControl->setChecked(false);
+	if (m_pDpcIllumControl) connectDpcIllumination(false);
+	
 }
 
 void QDeviceControlTab::closeEvent(QCloseEvent* e)
@@ -79,19 +84,19 @@ void QDeviceControlTab::setControlsStatus(bool enabled)
 	{
 		if (m_pCheckBox_PmtGainControl->isChecked()) m_pCheckBox_PmtGainControl->setChecked(false);
 		if (m_pCheckBox_FlimLaserTrigControl->isChecked()) m_pCheckBox_FlimLaserTrigControl->setChecked(false);
-		if (m_pCheckBox_FlimLaserControl->isChecked()) m_pCheckBox_FlimLaserControl->setChecked(false);
-		if (m_pCheckBox_ResonantScanControl->isChecked()) m_pCheckBox_ResonantScanControl->setChecked(false);
+		if (m_pCheckBox_FlimLaserControl->isChecked()) m_pCheckBox_FlimLaserControl->setChecked(false);		
 		if (m_pCheckBox_GalvoScanControl->isChecked()) m_pCheckBox_GalvoScanControl->setChecked(false);
-		if (m_pCheckBox_ZaberStageControl->isChecked()) m_pCheckBox_ZaberStageControl->setChecked(false);
+		if (m_pCheckBox_NanoscopeStageControl->isChecked()) m_pCheckBox_NanoscopeStageControl->setChecked(false);
+		if (m_pDpcIllumControl) connectDpcIllumination(false);
 	}
 	else
 	{
 		if (!m_pCheckBox_PmtGainControl->isChecked()) m_pCheckBox_PmtGainControl->setChecked(true);
 		if (!m_pCheckBox_FlimLaserTrigControl->isChecked()) m_pCheckBox_FlimLaserTrigControl->setChecked(true);
-		if (!m_pCheckBox_FlimLaserControl->isChecked()) m_pCheckBox_FlimLaserControl->setChecked(true);
-		if (m_pCheckBox_ResonantScanControl->isChecked()) m_pCheckBox_ResonantScanControl->setChecked(true);
+		if (!m_pCheckBox_FlimLaserControl->isChecked()) m_pCheckBox_FlimLaserControl->setChecked(true);		
 		if (!m_pCheckBox_GalvoScanControl->isChecked()) m_pCheckBox_GalvoScanControl->setChecked(true);
-		if (!m_pCheckBox_ZaberStageControl->isChecked()) m_pCheckBox_ZaberStageControl->setChecked(true);
+		if (!m_pCheckBox_NanoscopeStageControl->isChecked()) m_pCheckBox_NanoscopeStageControl->setChecked(true);
+		if (!m_pDpcIllumControl) connectDpcIllumination(true);
 	}
 }
 
@@ -195,7 +200,7 @@ void QDeviceControlTab::createFlimCalibControl()
     m_pPushButton_FlimCalibration = new QPushButton(this);
     m_pPushButton_FlimCalibration->setText("FLIm Pulse View and Calibration...");
     m_pPushButton_FlimCalibration->setFixedWidth(200);
-    m_pPushButton_FlimCalibration->setDisabled(true);
+    //m_pPushButton_FlimCalibration->setDisabled(true);
 
     pGridLayout_FlimCalibration->addWidget(m_pCheckBox_AlazarDigitizerControl, 0, 0, 1, 3);
     pGridLayout_FlimCalibration->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 1, 0);
@@ -216,167 +221,323 @@ void QDeviceControlTab::createFlimCalibControl()
 void QDeviceControlTab::createScanControl()
 {
     // Create widgets for scanner control
-    QGroupBox *pGroupBox_ScannerControl = new QGroupBox;
+    m_pGroupBox_ScannerControl = new QGroupBox;
 	QVBoxLayout *pVBoxLayout_ScannerControl = new QVBoxLayout;
 	pVBoxLayout_ScannerControl->setSpacing(3);
-	
-	m_pCheckBox_ResonantScanControl = new QCheckBox(pGroupBox_ScannerControl);
-	m_pCheckBox_ResonantScanControl->setText("Start Resonant Scanning");
-
-	m_pToggledButton_ResonantScan = new QPushButton(pGroupBox_ScannerControl);
-	m_pToggledButton_ResonantScan->setCheckable(true);
-	m_pToggledButton_ResonantScan->setText("Voltage On");
-	m_pToggledButton_ResonantScan->setDisabled(true);
-
-	m_pDoubleSpinBox_ResonantScan = new QDoubleSpinBox(pGroupBox_ScannerControl);
-	m_pDoubleSpinBox_ResonantScan->setFixedWidth(50);
-	m_pDoubleSpinBox_ResonantScan->setRange(0.0, 5.0);
-	m_pDoubleSpinBox_ResonantScan->setSingleStep(0.01);
-	m_pDoubleSpinBox_ResonantScan->setValue(0.00);
-	m_pDoubleSpinBox_ResonantScan->setDecimals(2);
-	m_pDoubleSpinBox_ResonantScan->setAlignment(Qt::AlignCenter);
-	m_pDoubleSpinBox_ResonantScan->setDisabled(true);
-
-	m_pLabel_ResonantScan = new QLabel("V", pGroupBox_ScannerControl);
-	m_pLabel_ResonantScan->setDisabled(true);
-	
-    m_pCheckBox_GalvoScanControl = new QCheckBox(pGroupBox_ScannerControl);
+		
+    m_pCheckBox_GalvoScanControl = new QCheckBox(m_pGroupBox_ScannerControl);
     m_pCheckBox_GalvoScanControl->setText("Start Galvano Mirror Scanning");
-
-    m_pLineEdit_PeakToPeakVoltage = new QLineEdit(pGroupBox_ScannerControl);
+	
+	m_pLineEdit_GalvoFastScanFreq = new QLineEdit(m_pGroupBox_ScannerControl);
+	m_pLineEdit_GalvoFastScanFreq->setFixedWidth(35);
+	m_pLineEdit_GalvoFastScanFreq->setText(QString::number(FAST_SCAN_FREQ));	
+	m_pLineEdit_GalvoFastScanFreq->setAlignment(Qt::AlignCenter);
+	
+    m_pLineEdit_PeakToPeakVoltage = new QLineEdit(m_pGroupBox_ScannerControl);
     m_pLineEdit_PeakToPeakVoltage->setFixedWidth(30);
     m_pLineEdit_PeakToPeakVoltage->setText(QString::number(m_pConfig->galvoScanVoltage, 'f', 1));
     m_pLineEdit_PeakToPeakVoltage->setAlignment(Qt::AlignCenter);
     m_pLineEdit_PeakToPeakVoltage->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-    m_pLineEdit_OffsetVoltage = new QLineEdit(pGroupBox_ScannerControl);
+    m_pLineEdit_OffsetVoltage = new QLineEdit(m_pGroupBox_ScannerControl);
     m_pLineEdit_OffsetVoltage->setFixedWidth(30);
     m_pLineEdit_OffsetVoltage->setText(QString::number(m_pConfig->galvoScanVoltageOffset, 'f', 1));
     m_pLineEdit_OffsetVoltage->setAlignment(Qt::AlignCenter);
     m_pLineEdit_OffsetVoltage->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    m_pLabel_ScanVoltage = new QLabel("Scan Voltage ", pGroupBox_ScannerControl);
-    m_pLabel_ScanPlusMinus = new QLabel("+", pGroupBox_ScannerControl);
+		
+	m_pLabel_GalvoFastScanFreq = new QLabel("Scan Freq ", m_pGroupBox_ScannerControl);
+	m_pLabel_GalvoFastScanFreqHz = new QLabel("Hz", m_pGroupBox_ScannerControl);
+    m_pLabel_ScanVoltage = new QLabel("Scan Voltage ", m_pGroupBox_ScannerControl);
+    m_pLabel_ScanPlusMinus = new QLabel("+", m_pGroupBox_ScannerControl);
     m_pLabel_ScanPlusMinus->setBuddy(m_pLineEdit_PeakToPeakVoltage);
-    m_pLabel_GalvanoVoltage = new QLabel("V", pGroupBox_ScannerControl);
+    m_pLabel_GalvanoVoltage = new QLabel("V", m_pGroupBox_ScannerControl);
     m_pLabel_GalvanoVoltage->setBuddy(m_pLineEdit_OffsetVoltage);
-			
-	QGridLayout *pGridLayout_ResonantScanControl = new QGridLayout;
-	pGridLayout_ResonantScanControl->setSpacing(3);
 
-	pGridLayout_ResonantScanControl->addWidget(m_pCheckBox_ResonantScanControl, 0, 0, 1, 4);
-	pGridLayout_ResonantScanControl->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 0);
-	pGridLayout_ResonantScanControl->addWidget(m_pToggledButton_ResonantScan, 1, 1);
-	pGridLayout_ResonantScanControl->addWidget(m_pDoubleSpinBox_ResonantScan, 1, 2);
-	pGridLayout_ResonantScanControl->addWidget(m_pLabel_ResonantScan, 1, 3);
+	QHBoxLayout *pHBoxLayout_FastScanFreq = new QHBoxLayout;
+	pHBoxLayout_FastScanFreq->setSpacing(3);
 
+	pHBoxLayout_FastScanFreq->addWidget(m_pCheckBox_GalvoScanControl);
+	pHBoxLayout_FastScanFreq->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+	pHBoxLayout_FastScanFreq->addWidget(m_pLabel_GalvoFastScanFreq);
+	pHBoxLayout_FastScanFreq->addWidget(m_pLineEdit_GalvoFastScanFreq);
+	pHBoxLayout_FastScanFreq->addWidget(m_pLabel_GalvoFastScanFreqHz);
+	
 	QGridLayout *pGridLayout_GalvoScanControl = new QGridLayout;
 	pGridLayout_GalvoScanControl->setSpacing(3);
 
-	pGridLayout_GalvoScanControl->addWidget(m_pCheckBox_GalvoScanControl, 0, 0, 1, 6);
-	pGridLayout_GalvoScanControl->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 0);
-	pGridLayout_GalvoScanControl->addWidget(m_pLabel_ScanVoltage, 2, 1);
-	pGridLayout_GalvoScanControl->addWidget(m_pLineEdit_PeakToPeakVoltage, 2, 2);
-	pGridLayout_GalvoScanControl->addWidget(m_pLabel_ScanPlusMinus, 2, 3);
-	pGridLayout_GalvoScanControl->addWidget(m_pLineEdit_OffsetVoltage, 2, 4);
-	pGridLayout_GalvoScanControl->addWidget(m_pLabel_GalvanoVoltage, 2, 5);
+	pGridLayout_GalvoScanControl->addItem(pHBoxLayout_FastScanFreq, 0, 0, 1, 6);
+	pGridLayout_GalvoScanControl->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 0);
+	pGridLayout_GalvoScanControl->addWidget(m_pLabel_ScanVoltage, 1, 1);
+	pGridLayout_GalvoScanControl->addWidget(m_pLineEdit_PeakToPeakVoltage, 1, 2);
+	pGridLayout_GalvoScanControl->addWidget(m_pLabel_ScanPlusMinus, 1, 3);
+	pGridLayout_GalvoScanControl->addWidget(m_pLineEdit_OffsetVoltage, 1, 4);
+	pGridLayout_GalvoScanControl->addWidget(m_pLabel_GalvanoVoltage, 1, 5);
 
-	pVBoxLayout_ScannerControl->addItem(pGridLayout_ResonantScanControl);
 	pVBoxLayout_ScannerControl->addItem(pGridLayout_GalvoScanControl);
 
-	pGroupBox_ScannerControl->setLayout(pVBoxLayout_ScannerControl);
-    m_pVBoxLayout->addWidget(pGroupBox_ScannerControl);
+	m_pGroupBox_ScannerControl->setLayout(pVBoxLayout_ScannerControl);
+    m_pVBoxLayout->addWidget(m_pGroupBox_ScannerControl);
 
     // Connect signal and slot
-	connect(m_pCheckBox_ResonantScanControl, SIGNAL(toggled(bool)), this, SLOT(connectResonantScanner(bool)));
-	connect(m_pToggledButton_ResonantScan, SIGNAL(toggled(bool)), this, SLOT(applyResonantScannerVoltage(bool)));
-	connect(m_pDoubleSpinBox_ResonantScan, SIGNAL(valueChanged(double)), this, SLOT(setResonantScannerVoltage(double)));
     connect(m_pCheckBox_GalvoScanControl, SIGNAL(toggled(bool)), this, SLOT(connectGalvanoMirror(bool)));
     connect(m_pLineEdit_PeakToPeakVoltage, SIGNAL(textChanged(const QString &)), this, SLOT(changeGalvoScanVoltage(const QString &)));
     connect(m_pLineEdit_OffsetVoltage, SIGNAL(textChanged(const QString &)), this, SLOT(changeGalvoScanVoltageOffset(const QString &)));    
 }
 
-void QDeviceControlTab::createZaberStageControl()
+void QDeviceControlTab::createNanoscopeStageControl()
 {
-	// Create widgets for Zaber stage control
-    QGroupBox *pGroupBox_ZaberStageControl = new QGroupBox;
-    QGridLayout *pGridLayout_ZaberStageControl = new QGridLayout;
-    pGridLayout_ZaberStageControl->setSpacing(3);
-
-    m_pCheckBox_ZaberStageControl = new QCheckBox(pGroupBox_ZaberStageControl);
-    m_pCheckBox_ZaberStageControl->setText("Connect to Zaber Stage");
-
-	m_pPushButton_SetStageNumber = new QPushButton(pGroupBox_ZaberStageControl);
-	m_pPushButton_SetStageNumber->setText("Stage Number");
-	m_pPushButton_SetStageNumber->setDisabled(true);
-    m_pPushButton_SetTargetSpeed = new QPushButton(pGroupBox_ZaberStageControl);
-    m_pPushButton_SetTargetSpeed->setText("Target Speed");
-	m_pPushButton_SetTargetSpeed->setDisabled(true);
-    m_pPushButton_MoveRelative = new QPushButton(pGroupBox_ZaberStageControl);
-	m_pPushButton_MoveRelative->setText("Move Relative");
-	m_pPushButton_MoveRelative->setDisabled(true);
-    m_pPushButton_Home = new QPushButton(pGroupBox_ZaberStageControl);
-    m_pPushButton_Home->setText("Home");
-	m_pPushButton_Home->setFixedWidth(60);
-	m_pPushButton_Home->setDisabled(true);
-    m_pPushButton_Stop = new QPushButton(pGroupBox_ZaberStageControl);
-    m_pPushButton_Stop->setText("Stop");
-	m_pPushButton_Stop->setFixedWidth(60);
-	m_pPushButton_Stop->setDisabled(true);
-
-	m_pComboBox_StageNumber = new QComboBox(pGroupBox_ZaberStageControl);
-	m_pComboBox_StageNumber->addItem("X-axis");
-	m_pComboBox_StageNumber->addItem("Y-axis");
-	m_pComboBox_StageNumber->setCurrentIndex(0);
-	m_pComboBox_StageNumber->setDisabled(true);
-    m_pLineEdit_TargetSpeed = new QLineEdit(pGroupBox_ZaberStageControl);
-    m_pLineEdit_TargetSpeed->setFixedWidth(25);
-    m_pLineEdit_TargetSpeed->setText(QString::number(m_pConfig->zaberPullbackSpeed, 'f', 1));
-	m_pLineEdit_TargetSpeed->setAlignment(Qt::AlignCenter);
-	m_pLineEdit_TargetSpeed->setDisabled(true);
-    m_pLineEdit_TravelLength = new QLineEdit(pGroupBox_ZaberStageControl);
-    m_pLineEdit_TravelLength->setFixedWidth(25);
-    m_pLineEdit_TravelLength->setText(QString::number(m_pConfig->zaberPullbackLength, 'f', 1));
-	m_pLineEdit_TravelLength->setAlignment(Qt::AlignCenter);
-	m_pLineEdit_TravelLength->setDisabled(true);
-
-    m_pLabel_TargetSpeed = new QLabel("mm/s", pGroupBox_ZaberStageControl);
-    m_pLabel_TargetSpeed->setBuddy(m_pLineEdit_TargetSpeed);
-	m_pLabel_TargetSpeed->setDisabled(true);
-    m_pLabel_TravelLength = new QLabel("mm", pGroupBox_ZaberStageControl);
-    m_pLabel_TravelLength->setBuddy(m_pLineEdit_TravelLength);
-	m_pLabel_TravelLength->setDisabled(true);
+	// Create widgets for Nanoscope stage control
+    m_pGroupBox_NanoscopeStageControl = new QGroupBox;
+    QGridLayout *pGridLayout_NanoscopeStageControl = new QGridLayout;
+    pGridLayout_NanoscopeStageControl->setSpacing(1);
 	
-    pGridLayout_ZaberStageControl->addWidget(m_pCheckBox_ZaberStageControl, 0, 0, 1, 5);
+	m_pCheckBox_NanoscopeStageControl = new QCheckBox(m_pGroupBox_NanoscopeStageControl);
+	m_pCheckBox_NanoscopeStageControl->setText("Connect to Nanoscope Stage");
+
+	// Data conversion
+	m_pLabel_StageUnit = new QLabel(this);
+	m_pLabel_StageUnit->setText("unit: mm");
+	m_pLabel_StageUnit->setDisabled(true);
+
+	// XYZ-axis widgets
+	for (int i = 0; i < 3; i++)
+	{
+		m_pGroupBox_Axis[i] = new QGroupBox(m_pGroupBox_NanoscopeStageControl);
+		m_pGroupBox_Axis[i]->setStyleSheet("QGroupBox{padding-top:15px; margin-top:-15px}");
+		m_pGroupBox_Axis[i]->setFixedHeight(118);
+		m_pGroupBox_Axis[i]->setTitle(QString("%1-axis").arg((char)('X'+i)));
+		m_pGroupBox_Axis[i]->setDisabled(true);
+		
+		m_pToggleButton_JogCW[i] = new QPushButton(m_pGroupBox_NanoscopeStageControl);
+		m_pToggleButton_JogCW[i]->setCheckable(true);
+		m_pToggleButton_JogCW[i]->setText(i != 2 ? "<<" : "^^");
+		m_pToggleButton_JogCW[i]->setStyleSheet("QPushButton{font-size: 7pt;}");
+		m_pToggleButton_JogCW[i]->setFixedSize(19, 20);
+		m_pPushButton_RelCW[i] = new QPushButton(m_pGroupBox_NanoscopeStageControl);
+		m_pPushButton_RelCW[i]->setText(i != 2 ? "<" : "^");
+		m_pPushButton_RelCW[i]->setStyleSheet("QPushButton{font-size: 7pt;}");
+		m_pPushButton_RelCW[i]->setFixedSize(19, 20);			
+		m_pPushButton_RelCCW[i] = new QPushButton(m_pGroupBox_NanoscopeStageControl);
+		m_pPushButton_RelCCW[i]->setText(i != 2 ? ">" : "v");
+		m_pPushButton_RelCCW[i]->setStyleSheet("QPushButton{font-size: 7pt;}");
+		m_pPushButton_RelCCW[i]->setFixedSize(19, 20);
+		m_pToggleButton_JogCCW[i] = new QPushButton(m_pGroupBox_NanoscopeStageControl);
+		m_pToggleButton_JogCCW[i]->setCheckable(true);
+		m_pToggleButton_JogCCW[i]->setText(i != 2 ? ">>" : "vv");
+		m_pToggleButton_JogCCW[i]->setStyleSheet("QPushButton{font-size: 7pt;}");
+		m_pToggleButton_JogCCW[i]->setFixedSize(19, 20);
+
+		// Set step-size indicator
+		m_pLabel_Step[i] = new QLabel(m_pGroupBox_NanoscopeStageControl);
+		m_pLabel_Step[i]->setText("Step");
+		m_pLabel_Step[i]->setStyleSheet("QLabel{font-size: 7pt;}");
+
+		m_pLineEdit_Step[i] = new QLineEdit(m_pGroupBox_NanoscopeStageControl);		
+		m_pLineEdit_Step[i]->setText(QString::number((double)(m_pConfig->NanoscopeStep[i] / (double)1'000'000.0), 'f', 4));		
+		m_pLineEdit_Step[i]->setStyleSheet("QLineEdit{font-size: 7pt;}");
+		m_pLineEdit_Step[i]->setAlignment(Qt::AlignCenter);
+		m_pLineEdit_Step[i]->setFixedSize(42, 15);
+
+		// Set position indicator
+		m_pLabel_Pos[i] = new QLabel(m_pGroupBox_NanoscopeStageControl);
+		m_pLabel_Pos[i]->setText("Pos");
+		m_pLabel_Pos[i]->setStyleSheet("QLabel{font-size: 7pt;}");
+		
+		m_pLineEdit_Pos[i] = new QLineEdit(m_pGroupBox_NanoscopeStageControl);
+		m_pLineEdit_Pos[i]->setText(QString::number((double)(m_pConfig->NanoscopePosition[i]) / 1'000'000.0, 'f', 4));		
+		m_pLineEdit_Pos[i]->setStyleSheet("QLineEdit{font-size: 7pt;}");
+		m_pLineEdit_Pos[i]->setAlignment(Qt::AlignCenter);
+		m_pLineEdit_Pos[i]->setFixedSize(42, 15);
+
+		// Set speed indicator
+		m_pLabel_Speed[i] = new QLabel(m_pGroupBox_NanoscopeStageControl);
+		m_pLabel_Speed[i]->setText("Prec ");
+		m_pLabel_Speed[i]->setStyleSheet("QLabel{font-size: 7pt;}");
+
+		m_pLineEdit_Speed[i] = new QLineEdit(m_pGroupBox_NanoscopeStageControl);
+		m_pLineEdit_Speed[i]->setText(QString::number(m_pConfig->NanoscopeSpeed[i]));
+		m_pLineEdit_Speed[i]->setStyleSheet("QLineEdit{font-size: 7pt;}");
+		m_pLineEdit_Speed[i]->setAlignment(Qt::AlignCenter);
+		m_pLineEdit_Speed[i]->setFixedSize(42, 15);
+
+		// Set other buttons
+		m_pPushButton_Read[i] = new QPushButton(m_pGroupBox_NanoscopeStageControl);
+		m_pPushButton_Read[i]->setText("Read");
+		m_pPushButton_Read[i]->setStyleSheet("QPushButton{font-size: 7pt;}");
+		m_pPushButton_Read[i]->setFixedSize(35, 20);
+		m_pPushButton_Stop[i] = new QPushButton(m_pGroupBox_NanoscopeStageControl);
+		m_pPushButton_Stop[i]->setText("Stop");
+		m_pPushButton_Stop[i]->setStyleSheet("QPushButton{font-size: 7pt;}");
+		m_pPushButton_Stop[i]->setFixedSize(35, 20);
+		
+		QGridLayout *pGridLayout_Axis = new QGridLayout;
+		pGridLayout_Axis->setSpacing(1);
+		pGridLayout_Axis->addItem(new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::MinimumExpanding), 0, 0, 1, 2);
+
+		QHBoxLayout *pHBoxLayout_Navigation = new QHBoxLayout;
+		pHBoxLayout_Navigation->setSpacing(0);
+		pHBoxLayout_Navigation->addWidget(m_pToggleButton_JogCW[i]);
+		pHBoxLayout_Navigation->addWidget(m_pPushButton_RelCW[i]);
+		pHBoxLayout_Navigation->addWidget(m_pPushButton_RelCCW[i]);
+		pHBoxLayout_Navigation->addWidget(m_pToggleButton_JogCCW[i]);
+
+		pGridLayout_Axis->addItem(pHBoxLayout_Navigation, 1, 0, 1, 2);
+		pGridLayout_Axis->addWidget(m_pLabel_Step[i], 2, 0);
+		pGridLayout_Axis->addWidget(m_pLineEdit_Step[i], 2, 1);
+		pGridLayout_Axis->addWidget(m_pLabel_Pos[i], 3, 0);
+		pGridLayout_Axis->addWidget(m_pLineEdit_Pos[i], 3, 1);		
+		pGridLayout_Axis->addWidget(m_pLabel_Speed[i], 4, 0);
+		pGridLayout_Axis->addWidget(m_pLineEdit_Speed[i], 4, 1);
+
+		QHBoxLayout *pHBoxLayout_Buttons = new QHBoxLayout;
+		pHBoxLayout_Buttons->setSpacing(0);
+		pHBoxLayout_Buttons->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+		pHBoxLayout_Buttons->addWidget(m_pPushButton_Read[i]);
+		pHBoxLayout_Buttons->addWidget(m_pPushButton_Stop[i]);
+
+		pGridLayout_Axis->addItem(pHBoxLayout_Buttons, 5, 0, 1, 2, Qt::AlignRight);
+		m_pGroupBox_Axis[i]->setLayout(pGridLayout_Axis);
+
+		pGridLayout_NanoscopeStageControl->addWidget(m_pGroupBox_Axis[i], 1, i);
+	}
 	
-	pGridLayout_ZaberStageControl->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 0);
-	pGridLayout_ZaberStageControl->addWidget(m_pPushButton_SetStageNumber, 1, 1, 1, 2);
-	pGridLayout_ZaberStageControl->addWidget(m_pComboBox_StageNumber, 1, 3, 1, 2);
-
-    //pGridLayout_ZaberStageControl->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 0);
-    pGridLayout_ZaberStageControl->addWidget(m_pPushButton_SetTargetSpeed, 2, 1, 1, 2);
-    pGridLayout_ZaberStageControl->addWidget(m_pLineEdit_TargetSpeed, 2, 3);
-    pGridLayout_ZaberStageControl->addWidget(m_pLabel_TargetSpeed, 2, 4);
-
-    //pGridLayout_ZaberStageControl->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 3, 0);
-    pGridLayout_ZaberStageControl->addWidget(m_pPushButton_MoveRelative, 3, 1, 1, 2);
-    pGridLayout_ZaberStageControl->addWidget(m_pLineEdit_TravelLength, 3, 3);
-    pGridLayout_ZaberStageControl->addWidget(m_pLabel_TravelLength, 3, 4);
-
-    //pGridLayout_ZaberStageControl->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 4, 0);
-    pGridLayout_ZaberStageControl->addWidget(m_pPushButton_Home, 4, 1);
-    pGridLayout_ZaberStageControl->addWidget(m_pPushButton_Stop, 4, 2);	
-
-	pGroupBox_ZaberStageControl->setLayout(pGridLayout_ZaberStageControl);
-	m_pVBoxLayout->addWidget(pGroupBox_ZaberStageControl);
+	// Set layout	
+	QHBoxLayout *pHBoxLayout_DataType = new QHBoxLayout;
+	pHBoxLayout_DataType->setSpacing(1);
+	pHBoxLayout_DataType->addWidget(m_pCheckBox_NanoscopeStageControl);
+	pHBoxLayout_DataType->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+	pHBoxLayout_DataType->addWidget(m_pLabel_StageUnit);
+	
+	pGridLayout_NanoscopeStageControl->addItem(pHBoxLayout_DataType, 0, 0, 1, 3);
+	
+	m_pGroupBox_NanoscopeStageControl->setLayout(pGridLayout_NanoscopeStageControl);
+	m_pVBoxLayout->addWidget(m_pGroupBox_NanoscopeStageControl);
 
 	// Connect signal and slot
-	connect(m_pCheckBox_ZaberStageControl, SIGNAL(toggled(bool)), this, SLOT(connectZaberStage(bool)));
-	connect(m_pPushButton_MoveRelative, SIGNAL(clicked(bool)), this, SLOT(moveRelative()));
-	connect(m_pLineEdit_TargetSpeed, SIGNAL(textChanged(const QString &)), this, SLOT(setTargetSpeed(const QString &)));
-	connect(m_pLineEdit_TravelLength, SIGNAL(textChanged(const QString &)), this, SLOT(changeZaberPullbackLength(const QString &)));
-	connect(m_pPushButton_Home, SIGNAL(clicked(bool)), this, SLOT(home()));
-	connect(m_pPushButton_Stop, SIGNAL(clicked(bool)), this, SLOT(stop()));
+	connect(m_pCheckBox_NanoscopeStageControl, SIGNAL(toggled(bool)), this, SLOT(connectNanoscopeStage(bool)));
+		
+	for (int i = 0; i < 3; i++)
+	{
+		connect(m_pToggleButton_JogCW[i], &QPushButton::toggled, [&, i](bool enabled) {
+			if (enabled)
+				m_pNanoscopeStage->writeStage(i + 1, rel_cw, -1);
+			else
+				m_pNanoscopeStage->writeStage(i + 1, stop, 0);
+		});
+
+		connect(m_pPushButton_RelCW[i], &QPushButton::clicked, [&, i]() {			
+			m_pNanoscopeStage->writeStage(i + 1, rel_cw, m_pConfig->NanoscopeStep[i]); // data : nm
+		});
+
+		connect(m_pPushButton_RelCCW[i], &QPushButton::clicked, [&, i]() {
+			m_pNanoscopeStage->writeStage(i + 1, rel_ccw, m_pConfig->NanoscopeStep[i]); // data : nm
+		});
+
+		connect(m_pToggleButton_JogCCW[i], &QPushButton::toggled, [&, i](bool enabled) {
+			if (enabled)
+				m_pNanoscopeStage->writeStage(i + 1, rel_ccw, -1);
+			else
+				m_pNanoscopeStage->writeStage(i + 1, stop, 0);
+		});
+
+		connect(m_pLineEdit_Pos[i], &QLineEdit::editingFinished, [&, i]() {
+			// no operation (no absolute moving)
+		});
+
+		connect(m_pLineEdit_Step[i], &QLineEdit::textEdited, [&, i](const QString &str) {
+			double step_size = str.toDouble();
+			m_pConfig->NanoscopeStep[i] = (int)(step_size * 1'000'000);
+		});
+
+		connect(m_pLineEdit_Speed[i], &QLineEdit::textEdited, [&, i](const QString &str) {
+			double _speed = str.toDouble();
+			m_pConfig->NanoscopeSpeed[i] = (int)_speed; // *1'000'000);
+			m_pNanoscopeStage->writeStage(i + 1, speed, m_pConfig->NanoscopeSpeed[i]);
+		});
+
+		connect(m_pPushButton_Read[i], &QPushButton::clicked, [&, i]() {
+			m_pNanoscopeStage->writeStage(i + 1, pos_que, 0);
+		});
+
+		connect(m_pPushButton_Stop[i], &QPushButton::clicked, [&, i]() {
+			m_pNanoscopeStage->writeStage(i + 1, stop, 0);
+		});		
+	}
+}
+
+void QDeviceControlTab::createDpcIlluminationControl()
+{
+	// Create widgets for dpc illumination control
+	m_pGroupBox_DpcIlluminationControl = new QGroupBox;
+	QVBoxLayout *pVBoxLayout_DpcIlluminationControl = new QVBoxLayout;
+	pVBoxLayout_DpcIlluminationControl->setSpacing(3);
+	
+	m_pLabel_Illumination = new QLabel(" Illumination", m_pGroupBox_DpcIlluminationControl);
+	m_pLabel_Illumination->setDisabled(true);
+
+	m_pRadioButton_Off = new QRadioButton(m_pGroupBox_DpcIlluminationControl);
+	m_pRadioButton_Off->setText("Off");
+	m_pRadioButton_Off->setDisabled(true);
+	m_pRadioButton_BrightField = new QRadioButton(m_pGroupBox_DpcIlluminationControl);
+	m_pRadioButton_BrightField->setText("Brightfield");
+	m_pRadioButton_BrightField->setDisabled(true);
+	m_pRadioButton_DarkField = new QRadioButton(m_pGroupBox_DpcIlluminationControl);
+	m_pRadioButton_DarkField->setText("Darkfield");
+	m_pRadioButton_DarkField->setDisabled(true);
+
+	m_pRadioButton_Top = new QRadioButton(m_pGroupBox_DpcIlluminationControl);
+	m_pRadioButton_Top->setText("Top");
+	m_pRadioButton_Top->setDisabled(true);
+	m_pRadioButton_Bottom = new QRadioButton(m_pGroupBox_DpcIlluminationControl);
+	m_pRadioButton_Bottom->setText("Bottom");
+	m_pRadioButton_Bottom->setDisabled(true);
+	m_pRadioButton_Left = new QRadioButton(m_pGroupBox_DpcIlluminationControl);
+	m_pRadioButton_Left->setText("Left");
+	m_pRadioButton_Left->setDisabled(true);
+	m_pRadioButton_Right = new QRadioButton(m_pGroupBox_DpcIlluminationControl);
+	m_pRadioButton_Right->setText("Right");
+	m_pRadioButton_Right->setDisabled(true);
+	
+	m_pButtonGroup_Illumination = new QButtonGroup(this);
+	m_pButtonGroup_Illumination->addButton(m_pRadioButton_Off, off);
+	m_pButtonGroup_Illumination->addButton(m_pRadioButton_BrightField, brightfield);
+	m_pButtonGroup_Illumination->addButton(m_pRadioButton_DarkField, darkfield);
+	m_pButtonGroup_Illumination->addButton(m_pRadioButton_Top, illum_top);
+	m_pButtonGroup_Illumination->addButton(m_pRadioButton_Bottom, illum_bottom);
+	m_pButtonGroup_Illumination->addButton(m_pRadioButton_Left, illum_left);
+	m_pButtonGroup_Illumination->addButton(m_pRadioButton_Right, illum_right);
+	m_pRadioButton_Off->setChecked(true);
+	
+
+	QGridLayout *pGridLayout_DpcIlluminationControl = new QGridLayout;
+	pGridLayout_DpcIlluminationControl->setSpacing(3);
+
+	QHBoxLayout *pHBoxLayout_DpcIllumination1 = new QHBoxLayout;
+	pHBoxLayout_DpcIllumination1->setSpacing(3);
+
+	pHBoxLayout_DpcIllumination1->addWidget(m_pLabel_Illumination);
+	pHBoxLayout_DpcIllumination1->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+	pHBoxLayout_DpcIllumination1->addWidget(m_pRadioButton_Off);
+	pHBoxLayout_DpcIllumination1->addWidget(m_pRadioButton_BrightField);
+	pHBoxLayout_DpcIllumination1->addWidget(m_pRadioButton_DarkField);
+
+	QHBoxLayout *pHBoxLayout_DpcIllumination2 = new QHBoxLayout;
+	pHBoxLayout_DpcIllumination2->setSpacing(3);
+
+	pHBoxLayout_DpcIllumination2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+	pHBoxLayout_DpcIllumination2->addWidget(m_pRadioButton_Top);
+	pHBoxLayout_DpcIllumination2->addWidget(m_pRadioButton_Bottom);
+	pHBoxLayout_DpcIllumination2->addWidget(m_pRadioButton_Left);
+	pHBoxLayout_DpcIllumination2->addWidget(m_pRadioButton_Right);
+	
+	pGridLayout_DpcIlluminationControl->addItem(pHBoxLayout_DpcIllumination1, 0, 0);
+	pGridLayout_DpcIlluminationControl->addItem(pHBoxLayout_DpcIllumination2, 1, 0);
+
+	m_pGroupBox_DpcIlluminationControl->setLayout(pGridLayout_DpcIlluminationControl);
+	m_pGroupBox_DpcIlluminationControl->setVisible(false);
+	
+	// Connect signal and slot
+	connect(m_pButtonGroup_Illumination, SIGNAL(buttonClicked(int)), this, SLOT(changeIlluminationMode(int)));
 }
 
 
@@ -387,7 +548,7 @@ void QDeviceControlTab::applyPmtGainVoltage(bool toggled)
         // Set text
         m_pCheckBox_PmtGainControl->setText("Stop Applying PMT Gain Control");
 
-        // Set enabled false for PMT gain control widgets
+        // Set enabled  for PMT gain control widgets
         m_pLineEdit_PmtGainVoltage->setEnabled(false);
         m_pLabel_PmtGainVoltage->setEnabled(false);
 
@@ -454,37 +615,84 @@ void QDeviceControlTab::startFlimTriggering(bool toggled)
         m_pLabel_RepetitionRate->setEnabled(false);
 
         // Create FLIm laser sync control objects
-        if (!m_pFlimTrigControl)
+        if (!m_pFlimTrigControlLaser)
         {
-            m_pFlimTrigControl = new FlimTrigger;
-            m_pFlimTrigControl->SendStatusMessage += [&](const char* msg, bool is_error) {
+			m_pFlimTrigControlLaser = new FlimTrigger;
+			m_pFlimTrigControlLaser->SendStatusMessage += [&](const char* msg, bool is_error) {
                 QString qmsg = QString::fromUtf8(msg);
                 emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
             };
         }
+		m_pFlimTrigControlLaser->sourceTerminal = NI_FLIM_TRIG_SOURCE;
+		m_pFlimTrigControlLaser->counterChannel = NI_FLIM_TRIG_CHANNEL;
+		m_pFlimTrigControlLaser->frequency = FLIM_LASER_REP_RATE;
+		m_pFlimTrigControlLaser->finite_samps = FLIM_LASER_FINITE_SAMPS;
 
-        m_pFlimTrigControl->frequency = FLIM_LASER_REP_RATE; 
-		m_pFlimTrigControl->finite_samps = FLIM_LASER_FINITE_SAMPS;
+		if (!m_pFlimTrigControlDAQ)
+		{
+			m_pFlimTrigControlDAQ = new FlimTrigger;
+			m_pFlimTrigControlDAQ->SendStatusMessage += [&](const char* msg, bool is_error) {
+				QString qmsg = QString::fromUtf8(msg);
+				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
+			};
+		}
+		m_pFlimTrigControlDAQ->sourceTerminal = ALAZAR_DAQ_TRIG_SOURCE;
+		m_pFlimTrigControlDAQ->counterChannel = ALAZAR_DAQ_TRIG_CHANNEL;
+		m_pFlimTrigControlDAQ->frequency = FLIM_LASER_REP_RATE;
+		m_pFlimTrigControlDAQ->finite_samps = FLIM_LASER_FINITE_SAMPS;
+
+		//// Create master triggering control objects
+		//if (!m_pPulseTrainMaster)
+		//{
+		//	m_pPulseTrainMaster = new PulseTrainGenerator;
+		//	m_pPulseTrainMaster->SendStatusMessage += [&](const char* msg, bool is_error) {
+		//		QString qmsg = QString::fromUtf8(msg);
+		//		emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
+		//	};
+		//}
+
+		//// Initializing
+		//m_pPulseTrainMaster->counterChannel = NI_MASTER_TRIG_CHANNEL;
+		//m_pPulseTrainMaster->triggerSource = NI_MASTER_TRIG_SOURCE; // Corpus callosum = SY Kwon
+		//m_pPulseTrainMaster->frequency = CRS_SCAN_FREQ;
 		
         // Initializing
-        if (!m_pFlimTrigControl->initialize())
+		if (!m_pFlimTrigControlLaser->initialize() || !m_pFlimTrigControlDAQ->initialize()) // || !m_pPulseTrainMaster->initialize())
         {
             m_pCheckBox_FlimLaserTrigControl->setChecked(false);
             return;
         }
 
         // Generate FLIm laser sync
-        m_pFlimTrigControl->start();
+		m_pFlimTrigControlLaser->start();
+		m_pFlimTrigControlDAQ->start();
+
+		//std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		//m_pPulseTrainMaster->start();
     }
     else
     {
         // Delete FLIm laser sync control objects
-        if (m_pFlimTrigControl)
+		//if (m_pPulseTrainMaster)
+		//{
+		//	m_pPulseTrainMaster->stop();
+		//	delete m_pPulseTrainMaster;
+		//	m_pPulseTrainMaster = nullptr;
+		//}
+
+        if (m_pFlimTrigControlLaser)
         {
-            m_pFlimTrigControl->stop();
-            delete m_pFlimTrigControl;
-            m_pFlimTrigControl = nullptr;
+			m_pFlimTrigControlLaser->stop();
+            delete m_pFlimTrigControlLaser;
+			m_pFlimTrigControlLaser = nullptr;
         }
+
+		if (m_pFlimTrigControlDAQ)
+		{
+			m_pFlimTrigControlDAQ->stop();
+			delete m_pFlimTrigControlDAQ;
+			m_pFlimTrigControlDAQ = nullptr;
+		}
 
         // Set enabled true for FLIm laser sync control widgets
         m_pLabel_RepetitionRate->setEnabled(true);
@@ -630,94 +838,6 @@ void QDeviceControlTab::deleteFlimCalibDlg()
 }
 
 
-void QDeviceControlTab::connectResonantScanner(bool toggled)
-{
-	if (toggled)
-	{
-		// Set text
-		m_pCheckBox_ResonantScanControl->setText("Stop Resonant Scanning");
-
-		// Set enable true for voltage control widgets
-		m_pToggledButton_ResonantScan->setEnabled(true);
-	}
-	else
-	{
-		// Voltage control off
-		m_pToggledButton_ResonantScan->setChecked(false);
-
-		// Set enable false for voltage control widgets
-		m_pToggledButton_ResonantScan->setEnabled(false);
-		m_pDoubleSpinBox_ResonantScan->setEnabled(false);
-		m_pLabel_ResonantScan->setEnabled(false);
-
-		// Set text
-		m_pCheckBox_ResonantScanControl->setText("Start Resonant Scanning");
-	}
-}
-
-void QDeviceControlTab::applyResonantScannerVoltage(bool toggled)
-{
-	if (toggled)
-	{
-		// Set text
-		m_pToggledButton_ResonantScan->setText("Voltage Off");
-
-		// Create resonant scanner voltage control objects
-		if (!m_pResonantScan)
-		{
-			m_pResonantScan = new ResonantScan;
-			m_pResonantScan->SendStatusMessage += [&](const char* msg, bool is_error) {
-				QString qmsg = QString::fromUtf8(msg);
-				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-			};
-		}
-
-		// Initializing
-		if (!m_pResonantScan->initialize())
-		{
-			m_pToggledButton_ResonantScan->setChecked(false);
-			return;
-		}
-
-		// Apply zero voltage
-		m_pResonantScan->apply(0);
-		//m_pConfig->resonantScanVoltage = 0;
-
-		// Set enable true for resonant scanner voltage control
-		m_pDoubleSpinBox_ResonantScan->setEnabled(true);
-		m_pLabel_ResonantScan->setEnabled(true);
-	}
-	else
-	{
-		// Set enable false for resonant scanner voltage control
-		m_pDoubleSpinBox_ResonantScan->setValue(0.0);
-		m_pDoubleSpinBox_ResonantScan->setEnabled(false);
-		m_pLabel_ResonantScan->setEnabled(false);
-
-		// Delete resonant scanner voltage control objects
-		if (m_pResonantScan)
-		{
-			m_pResonantScan->apply(0);
-			//m_pConfig->resonantScanVoltage = 0;
-
-			delete m_pResonantScan;
-			m_pResonantScan = nullptr;
-		}
-
-		// Set text
-		m_pToggledButton_ResonantScan->setText("Voltage On");
-	}
-}
-
-void QDeviceControlTab::setResonantScannerVoltage(double voltage)
-{
-	// Generate voltage for resonant scanner control
-	if (m_pResonantScan)
-		m_pResonantScan->apply(voltage);
-	if (voltage != 0.00)
-		m_pConfig->resonantScanVoltage = voltage;
-}
-
 void QDeviceControlTab::connectGalvanoMirror(bool toggled)
 {
     if (toggled)
@@ -732,7 +852,11 @@ void QDeviceControlTab::connectGalvanoMirror(bool toggled)
 		m_pLineEdit_OffsetVoltage->setEnabled(false);
 		m_pLabel_GalvanoVoltage->setEnabled(false);
 
-        m_pStreamTab->setYLinesWidgets(false);
+		//if (m_pStreamTab)
+		//{
+		//	m_pStreamTab->setYLinesWidgets(false);
+		//}
+
 
 #if (CRS_DIR_FACTOR == 2)
 		// Create two edge detection enable control objects
@@ -758,17 +882,16 @@ void QDeviceControlTab::connectGalvanoMirror(bool toggled)
             };
         }
 
-		m_pGalvoScan->sourceTerminal = (CRS_DIR_FACTOR == 1) ? NI_GALVO_SOURCE : NI_GALVO_SOURCE_BIDIR;
-		
+		m_pGalvoScan->sourceTerminal = (FAST_DIR_FACTOR == 1) ? NI_GALVO_SOURCE : NI_GALVO_SOURCE_BIDIR;
 		m_pGalvoScan->triggerSource = NI_GALVO_START_TRIG_SOURCE;
         m_pGalvoScan->pp_voltage = m_pLineEdit_PeakToPeakVoltage->text().toDouble();
         m_pGalvoScan->offset = m_pLineEdit_OffsetVoltage->text().toDouble();        
-		m_pGalvoScan->step = m_pConfig->nLines + GALVO_FLYING_BACK + 2;
+		m_pGalvoScan->step = 1 * (m_pConfig->nLines + GALVO_FLYING_BACK + 2);
 
         // Initializing
-#if (CRS_DIR_FACTOR == 1)
+#if (FAST_DIR_FACTOR == 1)
 		if (!m_pGalvoScan->initialize())
-#elif (CRS_DIR_FACTOR == 2)
+#elif (FAST_DIR_FACTOR == 2)		
 		if (!m_pTwoEdgeTriggerEnable->initialize() || !m_pGalvoScan->initialize())
 #endif
 		{
@@ -791,6 +914,7 @@ void QDeviceControlTab::connectGalvanoMirror(bool toggled)
             m_pGalvoScan->stop();
             delete m_pGalvoScan;
             m_pGalvoScan = nullptr;
+			
         }
 
 #if (CRS_DIR_FACTOR == 2)
@@ -829,147 +953,192 @@ void QDeviceControlTab::changeGalvoScanVoltageOffset(const QString &vol)
 }
 
 
-void QDeviceControlTab::connectZaberStage(bool toggled)
+void QDeviceControlTab::connectNanoscopeStage(bool toggled)
 {
 	if (toggled)
 	{
 		// Set text
-		m_pCheckBox_ZaberStageControl->setText("Disconnect from Zaber Stage");
+		m_pCheckBox_NanoscopeStageControl->setText("Disconnect from Nanoscope Stage");
 
-		// Create Zaber stage control objects
-		if (!m_pZaberStage)
+		// Create Nanoscope stage control objects
+		if (!m_pNanoscopeStage)
 		{
-			m_pZaberStage = new ZaberStage;
-			m_pZaberStage->SendStatusMessage += [&](const char* msg, bool is_error) {
+			m_pNanoscopeStage = new NanoscopeStage;
+			m_pNanoscopeStage->SetPortName(NANOSCOPE_STAGE_PORT);
+
+			m_pNanoscopeStage->SendStatusMessage += [&](const char* msg, bool is_error) {
 				QString qmsg = QString::fromUtf8(msg);
 				qmsg.replace('\n', ' ');	
 				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
 			};
 		}
 
+		// Set callback function
+		m_pNanoscopeStage->DidWriteCommand += [&](bool _moving) {
+			m_pStreamTab->m_bIsStageTransition = _moving;
+			if (_moving)
+			{
+				m_pStreamTab->m_bIsStageTransited = false; // ¼ø¿ëÄ® true;
+				m_pStreamTab->m_bRecordingPhase = false;
+			}
+			m_pStreamTab->m_nAverageCount = 1;
+		};
+
+		m_pNanoscopeStage->DidGetCurPos += [&](uint8_t stage, double cur_pos) {
+			m_pConfig->NanoscopePosition[stage - 1] = (int)(cur_pos * 1'000'000.0);
+			m_pLineEdit_Pos[stage - 1]->setText(QString::number(cur_pos, 'f', 4));
+		};
+
 		// Connect stage
-		if (!(m_pZaberStage->ConnectStage()))
+		if (!(m_pNanoscopeStage->ConnectDevice()))
 		{
-			m_pCheckBox_ZaberStageControl->setChecked(false);
+			m_pCheckBox_NanoscopeStageControl->setChecked(false);
 			return;
 		}
+		else
+		{
+			for (int i = 0; i < 3; i++)
+				m_pGroupBox_Axis[i]->setEnabled(true);			
+		}
+		
+		//m_pNanoscopeStage->DidMovedRelative += [&]() {
+		//	std::this_thread::sleep_for(std::chrono::milliseconds(250));
+		//	m_pNanoscopeStage_XY->setIsMoving(false);
+		//	if (m_pStreamTab->getOperationTab()->m_pMemoryBuffer->m_bIsRecording)
+		//		if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
+		//		{
+		//		}
+		//			//getStreamTab()->m_bIsStageTransition = false;  //false
 
-		// Set callback function
-		m_pZaberStage->DidMovedRelative += [&]() {
-			std::this_thread::sleep_for(std::chrono::milliseconds(250));
-			m_pZaberStage->setIsMoving(false);
-			if (m_pStreamTab->getOperationTab()->m_pMemoryBuffer->m_bIsRecording)
-				if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
-					getStreamTab()->m_bIsStageTransition = false;
-			//if (m_pStreamTab->getOperationTab()->m_pMemoryBuffer->m_bIsRecording)
-			//{
-			//	if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
-			//	{					
-			//		m_pCheckBox_FlimLaserTrigControl->setChecked(true);
+		//	//if (m_pStreamTab->getOperationTab()->m_pMemoryBuffer->m_bIsRecording)
+		//	//{
+		//	//	if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
+		//	//	{					
+		//	//		m_pCheckBox_FlimLaserTrigControl->setChecked(true);
 
-			//		//std::unique_lock<std::mutex> mlock(m_mtxStageScan);
-			//		//mlock.unlock();
-			//		//m_cvStageScan.notify_one();
-			//	}
-			//}
-		};
-
-		m_pZaberStage->DidMonitoring += [&]() {
-			emit monitoring();
-		};
-
-		// Set target speed first
-		m_pZaberStage->SetTargetSpeed(1, m_pLineEdit_TargetSpeed->text().toDouble());
-		m_pZaberStage->SetTargetSpeed(2, m_pLineEdit_TargetSpeed->text().toDouble());
-
-		// Set enable true for Zaber stage control widgets
-		m_pPushButton_SetStageNumber->setEnabled(true);
-		m_pPushButton_MoveRelative->setEnabled(true);
-		m_pPushButton_SetTargetSpeed->setEnabled(true);
-		m_pPushButton_Home->setEnabled(true);
-		m_pPushButton_Stop->setEnabled(true);
-		m_pComboBox_StageNumber->setEnabled(true);
-		m_pLineEdit_TravelLength->setEnabled(true);
-		m_pLineEdit_TargetSpeed->setEnabled(true);
-		m_pLabel_TravelLength->setEnabled(true);
-		m_pLabel_TargetSpeed->setEnabled(true);
-
+		//	//		//std::unique_lock<std::mutex> mlock(m_mtxStageScan);
+		//	//		//mlock.unlock();
+		//	//		//m_cvStageScan.notify_one();
+		//	//	}
+		//	//}
+		//};
+					
+		// Set enable true for Nanoscope stage control widgets
+		m_pLabel_StageUnit->setEnabled(true);
+		
 		m_pStreamTab->getImageStitchingCheckBox()->setEnabled(true);
 
 		// signal & slot connection
-		connect(this, SIGNAL(startStageScan(int, double)), this, SLOT(stageScan(int, double)));
-		//connect(this, SIGNAL(monitoring()), this, SLOT(getCurrentPosition()));
+		connect(this, SIGNAL(startStageScan(int, int)), this, SLOT(stageScan(int, int)));
+		connect(this, SIGNAL(monitoring()), this, SLOT(getCurrentPosition()));
 	}
 	else
 	{
 		// signal & slot disconnection
-		disconnect(this, SIGNAL(startStageScan(int, double)), 0, 0);
-		//disconnect(this, SIGNAL(monitoring()), 0, 0);
+		disconnect(this, SIGNAL(startStageScan(int, int)), 0, 0);
+		disconnect(this, SIGNAL(monitoring()), 0, 0);
 
-		// Set enable false for Zaber stage control widgets
+		// Set enable false for Nanoscope stage control widgets
 		if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
 			m_pStreamTab->getImageStitchingCheckBox()->setChecked(false);
 		m_pStreamTab->getImageStitchingCheckBox()->setDisabled(true);
 
-		m_pPushButton_SetStageNumber->setEnabled(false);
-		m_pPushButton_MoveRelative->setEnabled(false);
-		m_pPushButton_SetTargetSpeed->setEnabled(false);
-		m_pPushButton_Home->setEnabled(false);
-		m_pPushButton_Stop->setEnabled(false);
-		m_pComboBox_StageNumber->setEnabled(false);
-		m_pLineEdit_TravelLength->setEnabled(false);
-		m_pLineEdit_TargetSpeed->setEnabled(false);
-		m_pLabel_TravelLength->setEnabled(false);
-		m_pLabel_TargetSpeed->setEnabled(false);
+		m_pLabel_StageUnit->setDisabled(true);		
+		for (int i = 0; i < 3; i++)	
+			m_pGroupBox_Axis[i]->setDisabled(true);
 
-		if (m_pZaberStage)
+		if (m_pNanoscopeStage)
 		{
-			// Stop Wait Thread
-			m_pZaberStage->StopWaitThread();
-
 			// Disconnect the Stage
-			m_pZaberStage->DisconnectStage();
+			m_pNanoscopeStage->DisconnectDevice();
 
-			// Delete Zaber stage control objects
-			delete m_pZaberStage;
-			m_pZaberStage = nullptr;
+			// Delete Nanoscope stage control objects
+			delete m_pNanoscopeStage;
+			m_pNanoscopeStage = nullptr;
 		}
 
 		// Set text
-		m_pCheckBox_ZaberStageControl->setText("Connect to Zaber Stage");
+		m_pCheckBox_NanoscopeStageControl->setText("Connect to Nanoscope Stage");
 	}
 }
 
-void QDeviceControlTab::moveRelative()
+void QDeviceControlTab::stageScan(int dev_num, int length)
 {
-	m_pZaberStage->MoveRelative(m_pComboBox_StageNumber->currentIndex() + 1, m_pLineEdit_TravelLength->text().toDouble());
-}
-
-void QDeviceControlTab::setTargetSpeed(const QString & str)
-{
-	m_pZaberStage->SetTargetSpeed(m_pComboBox_StageNumber->currentIndex() + 1, str.toDouble());
-	m_pConfig->zaberPullbackSpeed = str.toFloat();
-}
-
-void QDeviceControlTab::changeZaberPullbackLength(const QString &str)
-{
-	m_pConfig->zaberPullbackLength = str.toFloat();
-}
-
-void QDeviceControlTab::home()
-{
-	m_pZaberStage->Home(m_pComboBox_StageNumber->currentIndex() + 1);
-}
-
-void QDeviceControlTab::stop()
-{
-	m_pZaberStage->Stop();
-}
-
-void QDeviceControlTab::stageScan(int dev_num, double length)
-{
-	if (length != 0)
-		m_pZaberStage->MoveRelative(dev_num, length);
+	//if (length != 0)
+	if (length > 0)
+		m_pNanoscopeStage->writeStage(dev_num, rel_ccw, length);
 	else
-		m_pZaberStage->Home(dev_num);
+		m_pNanoscopeStage->writeStage(dev_num, rel_cw, -length);
+}
+
+void QDeviceControlTab::getCurrentPosition()
+{
+}
+
+
+void QDeviceControlTab::connectDpcIlluminationControl(bool toggled)
+{
+	if (toggled)
+	{		
+		// Create DPC illumination control objects
+		if (!m_pDpcIllumControl)
+		{
+			m_pDpcIllumControl = new DpcIllumination;
+			m_pDpcIllumControl->SetPortName(ILLUMINATION_COM_PORT);
+
+			m_pDpcIllumControl->SendStatusMessage += [&](const char* msg, bool is_error) {
+				QString qmsg = QString::fromUtf8(msg);
+				qmsg.replace('\n', ' ');
+				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
+			};
+		}
+		
+		// Connect stage
+		if (!(m_pDpcIllumControl->ConnectDevice()))
+		{
+			connectDpcIlluminationControl(false);
+			return;
+		}
+
+		// Set enable true for DPC illumination control widgets
+		m_pLabel_Illumination->setEnabled(true);
+		m_pRadioButton_Off->setEnabled(true);
+		m_pRadioButton_BrightField->setEnabled(true);
+		m_pRadioButton_DarkField->setEnabled(true);
+		m_pRadioButton_Top->setEnabled(true);
+		m_pRadioButton_Bottom->setEnabled(true);
+		m_pRadioButton_Left->setEnabled(true);
+		m_pRadioButton_Right->setEnabled(true);
+	}
+	else
+	{
+		// LED off first
+		m_pRadioButton_Off->setChecked(true);
+
+		// Set enable false for DPC illumination control widgets
+		m_pLabel_Illumination->setEnabled(false);		
+		m_pRadioButton_Off->setEnabled(false);
+		m_pRadioButton_BrightField->setEnabled(false);
+		m_pRadioButton_DarkField->setEnabled(false);
+		m_pRadioButton_Top->setEnabled(false);
+		m_pRadioButton_Bottom->setEnabled(false);
+		m_pRadioButton_Left->setEnabled(false);
+		m_pRadioButton_Right->setEnabled(false);
+		
+		if (m_pDpcIllumControl)
+		{
+			// Disconnect the com port
+			m_pDpcIllumControl->DisconnectDevice();
+
+			// Delete DPC illumination control objects
+			delete m_pDpcIllumControl;
+			m_pDpcIllumControl = nullptr;
+		}
+	}
+
+}
+
+void QDeviceControlTab::changeIlluminationMode(int pattern)
+{
+	m_pDpcIllumControl->setIlluminationPattern(pattern);
 }

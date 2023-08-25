@@ -17,6 +17,7 @@ public:
 
     const char* sourceTerminal;
 	const char* counterChannel;
+	const char* triggerSource;
 
     bool initialize();
     void start();

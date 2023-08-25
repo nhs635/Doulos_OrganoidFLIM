@@ -420,7 +420,7 @@ void AlazarDAQ::run()
 
         // Set a buffer timeout that is longer than the time
         // required to capture all the records in one buffer.
-        DWORD timeout_ms = 100;
+        DWORD timeout_ms = 50;
 
         _running = true;
         while (_running)

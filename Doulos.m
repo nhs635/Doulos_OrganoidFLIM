@@ -3,8 +3,11 @@
 clc; clear; close all; 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Organoid FLIM Analysis code
-% 
+% DPC FLIM Analysis code
+%
+% AFL parameters : Intensity (Ch1 ~ Ch3) / Lifetime (Ch1 ~ Ch3) / Ratio 
+% Intensity ratio = [Ch1 / Ch2; Ch2 / Ch3; Ch3 / Ch1]
+% Image saving + histogram analysis
 % v220317 drafted
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -31,11 +34,11 @@ fid = fopen(strcat(dfilenm,'.ini'));
 config = textscan(fid,'%s');
 fclose(fid); 
 
-flimIntensityRange = zeros(4,2);
-flimLifetimeRange = zeros(4,2);
+flimIntensityRange = zeros(3,2);
+flimLifetimeRange = zeros(3,2);
 for i = 1 : length(config{:})
     
-    for j = 1 : 4
+    for j = 1 : 3
         if (strfind(config{1}{i},sprintf('flimIntensityRangeMax_Ch%d',j)))
             eq_pos = strfind(config{1}{i},'=');
             flimIntensityRange(j,2) = str2double(config{1}{i}(eq_pos+1:end));
@@ -94,12 +97,12 @@ clear config eq_pos;
 
 %% Colortable
 
-fname_imap = 'C:\Users\Organoid PC\Documents\MATLAB\ColorTable\fire.colortable';
-fname_imap_ch1 = 'C:\Users\Organoid PC\Documents\MATLAB\ColorTable\flim_ch1.colortable'; % C:\Users\BOP\Documents\MATLAB\ColorTable
-fname_imap_ch2 = 'C:\Users\Organoid PC\Documents\MATLAB\ColorTable\flim_ch2.colortable';
-fname_imap_ch3 = 'C:\Users\Organoid PC\Documents\MATLAB\ColorTable\flim_ch3.colortable';
-fname_lmap = strcat('C:\Users\Organoid PC\Documents\MATLAB\ColorTable\hsv1.colortable');
-fname_irmap = 'C:\Users\Organoid PC\Documents\MATLAB\ColorTable\jet.colortable';
+fname_imap = strcat(userpath,'\ColorTable\fire.colortable');
+fname_imap_ch1 = strcat(userpath,'\ColorTable\flim_ch1.colortable'); % C:\Users\BOP\Documents\MATLAB\ColorTable
+fname_imap_ch2 = strcat(userpath,'\ColorTable\flim_ch2.colortable');
+fname_imap_ch3 = strcat(userpath,'\ColorTable\flim_ch3.colortable');
+fname_lmap = strcat(userpath,'\ColorTable\hsv1.colortable');
+fname_irmap = strcat(userpath,'\ColorTable\jet.colortable');
 
 fid = fopen(fname_imap,'r');
 imap = reshape(fread(fid,'uint8'),[256 3])/255;
@@ -129,12 +132,12 @@ clear fid color_list fname_imap fname_lmap fname_irmap;
 
 %% FLIM Image
 
-intensity_image_raw = zeros(pixelsize,pixelsize,4);
-lifetime_image_raw = zeros(pixelsize,pixelsize,4);
-merged_image_raw = zeros(pixelsize,pixelsize,3,4);
+intensity_image_raw = zeros(pixelsize,pixelsize,3);
+lifetime_image_raw = zeros(pixelsize,pixelsize,3);
+merged_image_raw = zeros(pixelsize,pixelsize,3,3);
 
-flimIntensityRange = [0,0.3; 0,0.2; 0,0.1; 0,0.2]; % 3 x 2
-flimLifetimeRange = [1.0,6.5; 1.0,6.5; 1,5.5; 0.5,2.0]; % 3 x 2 
+flimIntensityRange = [0,0.3; 0,0.8; 0,0.1]; % 3 x 2
+flimLifetimeRange = [0.5,5.5; 0.5,5.0; 0.5,5.0]; % 3 x 2 
 
 % load data
 fname = sprintf([dfilenm,'.data']);
@@ -142,25 +145,29 @@ fid = fopen(fname,'r');
 
 for n = 1 : imageNumber
     
-    for i = 1 : 4
+    for i = 1 : 3
         temp = fread(fid,imageSize,'float');
         intensity_image_raw(:,:,i,n) = reshape(temp,[pixelsize pixelsize])';
+        intensity_image_raw(~isfinite(intensity_image_raw)) = 0;
+        intensity_image_raw(isnan(intensity_image_raw)) = 0;
         if (is_medfilt)
             intensity_image_raw(:,:,i,n) = medfilt2(intensity_image_raw(:,:,i,n),[3 3],'symmetric');
         end
         intensity_image(:,:,i,n) = intensity_image_raw(imageStichingMisSyncPos+1:end,:,i,n);
     end
 
-    for i = 1 : 4
+    for i = 1 : 3
         temp = fread(fid,imageSize,'float');
         lifetime_image_raw(:,:,i,n) = reshape(temp,[pixelsize pixelsize])';
+        lifetime_image_raw(~isfinite(lifetime_image_raw)) = 0;
+        lifetime_image_raw(isnan(lifetime_image_raw)) = 0;
         if (is_medfilt)
             lifetime_image_raw(:,:,i,n) = medfilt2(lifetime_image_raw(:,:,i,n),[3 3],'symmetric');
         end
         lifetime_image(:,:,i,n) = lifetime_image_raw(imageStichingMisSyncPos+1:end,:,i,n);
     end
     
-    for i = 1 : 4
+    for i = 1 : 3
         temp_l = uint8(255*mat2gray(lifetime_image_raw(:,:,i,n),[flimLifetimeRange(i,1) flimLifetimeRange(i,2)]));    
         temp_l = ind2rgb(temp_l,lmap);
         temp_i = mat2gray(intensity_image_raw(:,:,i,n),[flimIntensityRange(i,1) flimIntensityRange(i,2)]);  
@@ -178,77 +185,51 @@ clear fid;
 if (image_view)
 
     figure(100);
-    subplot(341); imagesc(intensity_image(:,:,1,1)); axis image; 
+    subplot(331); imagesc(intensity_image(:,:,1,1)); axis image; 
     caxis([flimIntensityRange(1,1) flimIntensityRange(1,2)]);
     colormap(imap_ch3); freezeColors;
     title(sprintf('Ch1 Intensity [%.1f %.1f]',flimIntensityRange(1,1),flimIntensityRange(1,2)));
-    subplot(342); imagesc(intensity_image(:,:,2,1)); axis image;
+    subplot(332); imagesc(intensity_image(:,:,2,1)); axis image;
     caxis([flimIntensityRange(2,1) flimIntensityRange(2,2)]);
     colormap(imap_ch3); freezeColors;
     title(sprintf('Ch2 Intensity [%.1f %.1f]',flimIntensityRange(2,1),flimIntensityRange(2,2)));
-    subplot(343); imagesc(intensity_image(:,:,3,1)); axis image;
+    subplot(333); imagesc(intensity_image(:,:,3,1)); axis image;
     caxis([flimIntensityRange(3,1) flimIntensityRange(3,2)]);
     colormap(imap_ch3); freezeColors;
     title(sprintf('Ch3 Intensity [%.1f %.1f]',flimIntensityRange(3,1),flimIntensityRange(3,2)));
-    subplot(344); imagesc(intensity_image(:,:,4,1)); axis image;
-    caxis([flimIntensityRange(4,1) flimIntensityRange(4,2)]);
-    colormap(imap_ch3); freezeColors;
-    title(sprintf('Ch4 Intensity [%.1f %.1f]',flimIntensityRange(4,1),flimIntensityRange(4,2)));
     
-    subplot(345); imagesc(lifetime_image(:,:,1,1)); axis image;
+    subplot(334); imagesc(lifetime_image(:,:,1,1)); axis image;
     caxis([flimLifetimeRange(1,1) flimLifetimeRange(1,2)]);
     colormap(lmap); freezeColors; 
     title(sprintf('Ch1 Lifetime [%.1f %.1f]',flimLifetimeRange(1,1),flimLifetimeRange(1,2)));
-    subplot(346); imagesc(lifetime_image(:,:,2,1)); axis image;
+    subplot(335); imagesc(lifetime_image(:,:,2,1)); axis image;
     caxis([flimLifetimeRange(2,1) flimLifetimeRange(2,2)]);
     colormap(lmap); freezeColors; 
     title(sprintf('Ch2 Lifetime [%.1f %.1f]',flimLifetimeRange(2,1),flimLifetimeRange(2,2)));
-    subplot(347); imagesc(lifetime_image(:,:,3,1)); axis image;
+    subplot(336); imagesc(lifetime_image(:,:,3,1)); axis image;
     caxis([flimLifetimeRange(3,1) flimLifetimeRange(3,2)]);
     colormap(lmap); freezeColors; 
     title(sprintf('Ch3 Lifetime [%.1f %.1f]',flimLifetimeRange(3,1),flimLifetimeRange(3,2)));
-    subplot(348); imagesc(lifetime_image(:,:,4,1)); axis image;
-    caxis([flimLifetimeRange(4,1) flimLifetimeRange(4,2)]);
-    colormap(lmap); freezeColors; 
-    title(sprintf('Ch4 Lifetime [%.1f %.1f]',flimLifetimeRange(4,1),flimLifetimeRange(4,2)));
-
-    subplot(3,4,9); imagesc(merged_image(:,:,:,1,1)); axis image; title('Ch1 Merged');
-    subplot(3,4,10); imagesc(merged_image(:,:,:,2,1)); axis image; title('Ch2 Merged');
-    subplot(3,4,11); imagesc(merged_image(:,:,:,3,1)); axis image; title('Ch3 Merged');
-    subplot(3,4,12); imagesc(merged_image(:,:,:,4,1)); axis image; title('Ch4 Merged');
-
+    
+    subplot(337); imagesc(merged_image(:,:,:,1,1)); axis image; title('Ch1 Merged');
+    subplot(338); imagesc(merged_image(:,:,:,2,1)); axis image; title('Ch2 Merged');
+    subplot(339); imagesc(merged_image(:,:,:,3,1)); axis image; title('Ch3 Merged');
 end
-
 
 %% Intensity ratio
 
-% % load data
-% fname = sprintf([dfilenm,'.data']);
-% fid = fopen(fname,'r');
-% 
-% for i = 1 : 3
-%     temp = fread(fid,frameSize,'float');
-%     intensity_image(:,:,i) = reshape(temp,[imageSize imageSize])';
-%     if (is_medfilt)
-%         intensity_image(:,:,i) = medfilt2(intensity_image(:,:,i),[3 3],'symmetric');
-%     end
-% end
-% 
-% fclose(fid);
-% clear fid;
-
-IntRatiorange = [0 0.8; 2 16; 0 12.5];
-% 
+% IntRatiorange = [0 0.8; 2 16; 0 12.5];
+% Intensity ratio should be changed into log-scaled data
 % for n = 1 : imageNumber
-%     Ch1_Ch2_ratio(:,:,n) = intensity_image(:,:,1,n)./intensity_image(:,:,2,n);
-%     Ch2_Ch3_ratio(:,:,n) = intensity_image(:,:,2,n)./intensity_image(:,:,3,n);
-%     Ch1_Ch3_ratio(:,:,n) = intensity_image(:,:,1,n)./intensity_image(:,:,3,n);
+%     Ch1_Ch2_ratio(:,:,n) = log10(intensity_image(:,:,1,n)./intensity_image(:,:,2,n));
+%     Ch2_Ch3_ratio(:,:,n) = log10(intensity_image(:,:,2,n)./intensity_image(:,:,3,n));
+%     Ch3_Ch1_ratio(:,:,n) = log10(intensity_image(:,:,3,n)./intensity_image(:,:,1,n));
 % end
 % 
 % figure(50);
-% subplot(131); imagesc(Ch1_Ch2_ratio(:,:,2)); caxis(IntRatiorange(1,:)); colormap jet; axis image;
-% subplot(132); imagesc(Ch2_Ch3_ratio(:,:,2)); caxis(IntRatiorange(2,:)); colormap jet; axis image;
-% subplot(133); imagesc(Ch1_Ch3_ratio(:,:,2)); caxis(IntRatiorange(3,:)); colormap jet; axis image;
+% subplot(131); imagesc(Ch1_Ch2_ratio(:,:,1)); colormap jet; axis image;
+% subplot(132); imagesc(Ch2_Ch3_ratio(:,:,1));colormap jet; axis image;
+% subplot(133); imagesc(Ch1_Ch3_ratio(:,:,1));colormap jet; axis image;
 
 
 %% Image Write
@@ -256,17 +237,17 @@ IntRatiorange = [0 0.8; 2 16; 0 12.5];
 if (is_write)
     
     for n = 1 : imageNumber
-        for i = 1 : 4
+        for i = 1 : 3
             temp = uint8(255 * mat2gray(intensity_image(:,:,i,imageNumber-n+1),[flimIntensityRange(i,1) flimIntensityRange(i,2)])); 
             imwrite(temp,imap,sprintf('scaled_image_matlab/intensity_image_ch_%d_avg_%d_[%.1f %.1f]_%d.bmp',...
                 i,imageAveragingFrames,flimIntensityRange(i,1),flimIntensityRange(i,2),n));
         end
-        for i = 1 : 4
+        for i = 1 : 3
             temp = uint8(255 * mat2gray(lifetime_image(:,:,i,imageNumber-n+1),[flimLifetimeRange(i,1) flimLifetimeRange(i,2)])); 
             imwrite(temp,lmap,sprintf('scaled_image_matlab/lifetime_image_ch_%d_avg_%d_[%.1f %.1f]_%d.bmp',...
                 i,imageAveragingFrames,flimLifetimeRange(i,1),flimLifetimeRange(i,2),n));
         end
-        for i = 1 : 4
+        for i = 1 : 3
             temp = uint8(255 * merged_image(:,:,:,i,imageNumber-n+1));
             imwrite(temp,sprintf('scaled_image_matlab/merged_image_ch_%d_avg_%d_i[%.1f %.1f]_l[%.1f %.1f]_%d.bmp',...
                 i,imageAveragingFrames,flimIntensityRange(i,1),flimIntensityRange(i,2),...
@@ -285,5 +266,4 @@ if (is_write)
 %         imwrite(temp,irmap,sprintf('scaled_image_matlab/intensity_ratio_Ch1_Ch3[%.1f %.1f]_%d.bmp',...
 %         IntRatiorange(3,1),IntRatiorange(3,2),n));
     end
-
 end

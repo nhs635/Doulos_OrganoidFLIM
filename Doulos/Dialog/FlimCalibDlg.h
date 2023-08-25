@@ -147,7 +147,6 @@ public slots : // widgets
     void resetChStart1(double);
     void resetChStart2(double);
     void resetChStart3(double);
-	void resetChStart4(double);
     void resetDelayTimeOffset();
 
 signals:
@@ -186,9 +185,9 @@ private:
 
     QLabel *m_pLabel_ChStart;
     QLabel *m_pLabel_DelayTimeOffset;
-    QLabel *m_pLabel_Ch[5];
-    QMySpinBox *m_pSpinBox_ChStart[5];
-    QLineEdit *m_pLineEdit_DelayTimeOffset[4];
+    QLabel *m_pLabel_Ch[4];
+    QMySpinBox *m_pSpinBox_ChStart[4];
+    QLineEdit *m_pLineEdit_DelayTimeOffset[3];
     QLabel *m_pLabel_NanoSec[2];
 
     // Widgets for histogram

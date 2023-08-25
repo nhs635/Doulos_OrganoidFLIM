@@ -7,6 +7,8 @@
 #include <NIDAQmx.h>
 using namespace std;
 
+int32 CVICALLBACK ChangeDetectionCallback(TaskHandle taskHandle, int32 signalID, void *callbackData);
+
 
 TwoEdgeTriggerEnable::TwoEdgeTriggerEnable() :
 	_taskHandle(nullptr),
@@ -46,6 +48,12 @@ bool TwoEdgeTriggerEnable::initialize()
 		return false;
 	}
 	
+	if ((res = DAQmxRegisterSignalEvent(_taskHandle, DAQmx_Val_ChangeDetectionEvent, 0, ChangeDetectionCallback, NULL)) != 0)
+	{
+		dumpError(res, "ERROR: Failed to set NI Digital Input: ");
+		return false;
+	}
+	
     SendStatusMessage("NI Digital Input for detecting both rising and falling edges is successfully initialized.", false);
 
     return true;
@@ -63,12 +71,6 @@ void TwoEdgeTriggerEnable::start()
 
         SendStatusMessage("NI Digital Input enable to detect both rising and falling edges.", false);
         DAQmxStartTask(_taskHandle);
-
-		if ((res = DAQmxReadDigitalLines(_taskHandle, 4, 10.0, DAQmx_Val_GroupByScanNumber, data, 32, &numRead, &bytesPerSamp, NULL)) != 0)
-		{
-			dumpError(res, "ERROR: Failed to set NI Digital Input: ");
-			return;
-		}
     }
 }
 
@@ -100,4 +102,21 @@ void TwoEdgeTriggerEnable::dumpError(int res, const char* pPreamble)
         DAQmxClearTask(_taskHandle);
         _taskHandle = nullptr;
     }
+}
+
+
+int32 CVICALLBACK ChangeDetectionCallback(TaskHandle taskHandle, int32 signalID, void *callbackData)
+{
+	int		res;
+	uInt8   data[32] = { 0 };
+	int32   numRead;
+		
+	/*********************************************/
+	// DAQmx Read Code
+	/*********************************************/
+	//if (taskHandle)
+	//	if ((res = DAQmxReadDigitalLines(taskHandle, 4, 10.0, DAQmx_Val_GroupByScanNumber, data, 32, &numRead, NULL, NULL)) != 0)
+	//		return -1;
+	
+	return 0;
 }

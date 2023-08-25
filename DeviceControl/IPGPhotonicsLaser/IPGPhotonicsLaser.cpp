@@ -31,7 +31,7 @@ IPGPhotonicsLaser::~IPGPhotonicsLaser()
 bool IPGPhotonicsLaser::ConnectDevice()
 {
 	// Open a port
-	if (!m_pSerialComm->m_bIsConnected)
+	if (!m_pSerialComm->getConnectState())
 	{
         if (m_pSerialComm->openSerialPort(port_name, QSerialPort::Baud57600))
 		{
@@ -91,7 +91,7 @@ bool IPGPhotonicsLaser::ConnectDevice()
 
 void IPGPhotonicsLaser::DisconnectDevice()
 {
-	if (m_pSerialComm->m_bIsConnected)
+	if (m_pSerialComm->getConnectState())
     {
         // Stop operation
         EnableEmission(false);
@@ -115,10 +115,12 @@ void IPGPhotonicsLaser::ReadStatus()
 }
 
 
-void IPGPhotonicsLaser::EnableEmission(bool enabled)
+bool IPGPhotonicsLaser::EnableEmission(bool enabled)
 {
     char* buff = enabled ? (char*)"EMON\n" : (char*)"EMOFF\n";
     SendMessage(buff);
+
+	return true;
 }
 
 

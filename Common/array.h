@@ -96,6 +96,7 @@ namespace np {
 
 	template <typename T, size_t Dim = 1, class Allocator = heap_allocator>
 	struct Array
+
 	{
 	public:
 		typedef T value_type;

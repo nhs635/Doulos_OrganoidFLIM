@@ -70,10 +70,10 @@ void FlimCalibDlg::createPulseView()
 	QLabel *pLabel_null = new QLabel(this);
 	pLabel_null->setFixedWidth(37);
 
-	m_pScope_PulseView = new QScope({ 0, (double)m_pConfig->nScans }, { 0, POWER_2(16) }, 2, 2, 1, 1, 0, 0, "", "");
+	m_pScope_PulseView = new QScope({ 0, (double)m_pConfig->nScans }, { POWER_2(15) - POWER_2(12), POWER_2(16) }, 2, 2, 1, 1, 0, 0, "", "");
     m_pScope_PulseView->setMinimumHeight(180);
     m_pScope_PulseView->getRender()->setGrid(8, 32, 1, true);
-	m_pScope_PulseView->setDcLine(m_pFLIm->_params.bg);
+	m_pScope_PulseView->setDcLine(m_pFLIm->_params.bg - (POWER_2(15) - POWER_2(12)));
 
     m_pCheckBox_ShowWindow = new QCheckBox(this);
     m_pCheckBox_ShowWindow->setText("Show Window");
@@ -121,10 +121,10 @@ void FlimCalibDlg::createCalibWidgets()
     QGridLayout *pGridLayout_PulseView = new QGridLayout;
     pGridLayout_PulseView->setSpacing(2);
 
-	// Create widget for FLIM pulse writing
-	m_pToggleButton_WriteCurrentPulses = new QPushButton(this);
-	m_pToggleButton_WriteCurrentPulses->setText("Write Current Pulses");
-	m_pToggleButton_WriteCurrentPulses->setCheckable(true);
+	/// // Create widget for FLIM pulse writing (deprecated)
+	///m_pToggleButton_WriteCurrentPulses = new QPushButton(this);
+	///m_pToggleButton_WriteCurrentPulses->setText("Write Current Pulses");
+	///m_pToggleButton_WriteCurrentPulses->setCheckable(true);
 
     // Create widgets for FLIM calibration
     m_pPushButton_CaptureBackground = new QPushButton(this);
@@ -150,11 +150,8 @@ void FlimCalibDlg::createCalibWidgets()
     m_pLabel_Ch[3] = new QLabel("Ch 3 (540)", this);
     m_pLabel_Ch[3]->setFixedWidth(60);
     m_pLabel_Ch[3]->setAlignment(Qt::AlignCenter);
-	m_pLabel_Ch[4] = new QLabel("Ch 4 (618)", this);
-	m_pLabel_Ch[4]->setFixedWidth(60);
-	m_pLabel_Ch[4]->setAlignment(Qt::AlignCenter);
 
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 4; i++)
     {
         m_pSpinBox_ChStart[i] = new QMySpinBox(this);
         m_pSpinBox_ChStart[i]->setFixedWidth(60);
@@ -176,7 +173,6 @@ void FlimCalibDlg::createCalibWidgets()
     resetChStart1((double)m_pFLIm->_params.ch_start_ind[1] * (double)m_pFLIm->_params.samp_intv);
     resetChStart2((double)m_pFLIm->_params.ch_start_ind[2] * (double)m_pFLIm->_params.samp_intv);
     resetChStart3((double)m_pFLIm->_params.ch_start_ind[3] * (double)m_pFLIm->_params.samp_intv);
-	resetChStart4((double)m_pFLIm->_params.ch_start_ind[4] * (double)m_pFLIm->_params.samp_intv);
 	
     m_pLabel_NanoSec[0] = new QLabel("nsec", this);
     m_pLabel_NanoSec[0]->setFixedWidth(25);
@@ -186,7 +182,7 @@ void FlimCalibDlg::createCalibWidgets()
     // Set layout
     QHBoxLayout *pHBoxLayout_Background = new QHBoxLayout;
     pHBoxLayout_Background->setSpacing(2);
-	pHBoxLayout_Background->addWidget(m_pToggleButton_WriteCurrentPulses);
+	///pHBoxLayout_Background->addWidget(m_pToggleButton_WriteCurrentPulses);
 	pHBoxLayout_Background->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
     pHBoxLayout_Background->addWidget(m_pPushButton_CaptureBackground);
     pHBoxLayout_Background->addWidget(m_pLineEdit_Background);
@@ -200,12 +196,12 @@ void FlimCalibDlg::createCalibWidgets()
     pGridLayout_PulseView->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 3, 0);
     pGridLayout_PulseView->addWidget(m_pLabel_DelayTimeOffset, 3, 1, 1, 2);
 
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 4; i++)
     {
         pGridLayout_PulseView->addWidget(m_pLabel_Ch[i], 1, i + 2);
         pGridLayout_PulseView->addWidget(m_pSpinBox_ChStart[i], 2, i + 2);
     }
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 3; i++)
     {
         pGridLayout_PulseView->addWidget(m_pLineEdit_DelayTimeOffset[i], 3, i + 3);
     }
@@ -215,16 +211,15 @@ void FlimCalibDlg::createCalibWidgets()
     m_pVBoxLayout->addItem(pGridLayout_PulseView);
 
     // Connect
-	connect(m_pToggleButton_WriteCurrentPulses, SIGNAL(toggled(bool)), this, SLOT(writeCurrentPulses(bool)));
+	///connect(m_pToggleButton_WriteCurrentPulses, SIGNAL(toggled(bool)), this, SLOT(writeCurrentPulses(bool)));
     connect(m_pPushButton_CaptureBackground, SIGNAL(clicked(bool)), this, SLOT(captureBackground()));
     connect(m_pLineEdit_Background, SIGNAL(textChanged(const QString &)), this, SLOT(captureBackground(const QString &)));
     connect(m_pSpinBox_ChStart[0], SIGNAL(valueChanged(double)), this, SLOT(resetChStart0(double)));
     connect(m_pSpinBox_ChStart[1], SIGNAL(valueChanged(double)), this, SLOT(resetChStart1(double)));
     connect(m_pSpinBox_ChStart[2], SIGNAL(valueChanged(double)), this, SLOT(resetChStart2(double)));
     connect(m_pSpinBox_ChStart[3], SIGNAL(valueChanged(double)), this, SLOT(resetChStart3(double)));
-	connect(m_pSpinBox_ChStart[4], SIGNAL(valueChanged(double)), this, SLOT(resetChStart4(double)));
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 3; i++)
         connect(m_pLineEdit_DelayTimeOffset[i], SIGNAL(textChanged(const QString &)), this, SLOT(resetDelayTimeOffset()));
 }
 
@@ -328,7 +323,6 @@ void FlimCalibDlg::createHistogram()
     pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetimeMean, 4, 0, 1, 2);
     pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetimeStd, 4, 2, 1, 2);
 
-
     pHBoxLayout_Histogram->addItem(pGridLayout_IntensityHistogram);
     pHBoxLayout_Histogram->addItem(pGridLayout_LifetimeHistogram);
 
@@ -396,30 +390,31 @@ void FlimCalibDlg::drawRoiPulse(float* pulse_ptr, int aline)
 	{
 		np::FloatArray2 pulse_temp = np::FloatArray2(m_pConfig->nScans, m_pConfig->nTimes);
 		memcpy(pulse_temp, pulse_ptr, sizeof(float) * m_pConfig->bufferSize);
-		int _roi_width = m_pFLIm->_params.ch_start_ind[5] - m_pFLIm->_params.ch_start_ind[0];
+		int _roi_width = m_pFLIm->_params.ch_start_ind[4] - m_pFLIm->_params.ch_start_ind[0];
 		
 		pulse_32f = np::FloatArray2(pulse_ptr, _roi_width, m_pConfig->nTimes);
 		ippiCopy_32f_C1R(&pulse_temp(m_pFLIm->_params.ch_start_ind[0], 0), sizeof(float) * m_pConfig->nScans,
 			&pulse_32f(0, 0), sizeof(float) * _roi_width, { _roi_width, m_pConfig->nTimes });
 	}
 
-	// Pulse writing (if specified)
-	if (m_pToggleButton_WriteCurrentPulses->isChecked())
-	{
-		QDateTime date = QDateTime::currentDateTime();
-		QString formattedTime = date.toString("yyyy-MM-dd_hh-mm-ss");
+	/// deprecated
+	/// // Pulse writing (if specified)
+	///if (m_pToggleButton_WriteCurrentPulses->isChecked())
+	///{
+	///	QDateTime date = QDateTime::currentDateTime();
+	///	QString formattedTime = date.toString("yyyy-MM-dd_hh-mm-ss");
 
-		QFile file("pulse_data/pulse_" + formattedTime + ".data");
-		if (file.open(QIODevice::WriteOnly))
-			file.write(reinterpret_cast<char*>(pulse_32f.raw_ptr()), sizeof(float) * pulse_32f.length());
-		file.close();
-	}
+	///	QFile file("pulse_data/pulse_" + formattedTime + ".data");
+	///	if (file.open(QIODevice::WriteOnly))
+	///		file.write(reinterpret_cast<char*>(pulse_32f.raw_ptr()), sizeof(float) * pulse_32f.length());
+	///	file.close();
+	///}
 
 	// Reset size (if necessary)	
 	if (roi_width != pulse_32f.size(0))
 	{
 		m_pImageView_PulseImage->resetSize(pulse_32f.size(0), pulse_32f.size(1));
-		m_pScope_PulseView->resetAxis({ 0, (double)pulse_32f.size(0) }, { 0, POWER_2(16) });
+		m_pScope_PulseView->resetAxis({ 0, (double)pulse_32f.size(0) }, { POWER_2(15) - POWER_2(12), POWER_2(16) });
 		roi_width = pulse_32f.size(0);
 	}
 
@@ -444,8 +439,8 @@ void FlimCalibDlg::drawRoiPulse(float* pulse_ptr, int aline)
 	if (m_pCheckBox_ShowMeanDelay->isChecked())
 	{
 		// Calculate
-		np::FloatArray mean_delay(5);
-		for (int i = 0; i < 5; i++)
+		np::FloatArray mean_delay(4);
+		for (int i = 0; i < 4; i++)
 		{
 			int offset, width, roi_width, left, max_idx;
 			float md_temp;
@@ -457,7 +452,8 @@ void FlimCalibDlg::drawRoiPulse(float* pulse_ptr, int aline)
 			left = (int)floor(roi_width / 2);
 			
 			m_pFLIm->_lifetime.MeanDelay_32f(m_pFLIm->_resize, pulse, offset, aline, max_idx, roi_width, left, md_temp);
-			mean_delay(i) = md_temp + (float)m_pFLIm->_params.ch_start_ind[i];
+			//md_temp = max_idx;
+			mean_delay(i) = (md_temp + (float)m_pFLIm->_resize.ch_start_ind1[i]) / (float)m_pFLIm->_resize.ActualFactor;
 		}
 
 		// Visualize
@@ -602,7 +598,7 @@ void FlimCalibDlg::captureBackground(const QString &str)
 {
     float bg = str.toFloat();
 	
-	m_pScope_PulseView->setDcLine(bg);
+	m_pScope_PulseView->setDcLine(bg - (POWER_2(15) - POWER_2(12)));
     m_pFLIm->_params.bg = bg;
     m_pConfig->flimBg = bg;
 }
@@ -631,13 +627,13 @@ void FlimCalibDlg::resetChStart0(double start)
 		}
 		else
 		{
-			for (int i = 0; i < 5; i++)
+			for (int i = 0; i < 4; i++)
 			{
 				m_pScope_PulseView->getRender()->m_pWinLineInd[0] = m_pFLIm->_params.ch_start_ind[i] - ch_ind;
 				m_pImageView_PulseImage->getRender()->m_pVLineInd[0] = m_pFLIm->_params.ch_start_ind[i] - ch_ind;
 			}
-			m_pScope_PulseView->getRender()->m_pWinLineInd[5] = m_pFLIm->_params.ch_start_ind[4] - ch_ind + FLIM_CH_START_6;
-			m_pImageView_PulseImage->getRender()->m_pVLineInd[5] = m_pFLIm->_params.ch_start_ind[4] - ch_ind + FLIM_CH_START_6;
+			m_pScope_PulseView->getRender()->m_pWinLineInd[4] = m_pFLIm->_params.ch_start_ind[3] - ch_ind + FLIM_CH_START_5;
+			m_pImageView_PulseImage->getRender()->m_pVLineInd[4] = m_pFLIm->_params.ch_start_ind[3] - ch_ind + FLIM_CH_START_5;
 		}
     }
 
@@ -711,21 +707,52 @@ void FlimCalibDlg::resetChStart2(double start)
     m_pScope_PulseView->getRender()->update();
 }
 
+//void FlimCalibDlg::resetChStart3(double start)
+//{
+//	int ch_ind = (int)round(start / m_pFLIm->_params.samp_intv);
+//
+//	m_pFLIm->_params.ch_start_ind[3] = ch_ind;
+//	m_pConfig->flimChStartInd[3] = ch_ind;
+//
+//	m_pFLIm->_resize.initiated = false;
+//
+//	///printf("[Ch 3] %d %d %d %d\n",
+//	///    m_pFLIm->_params.ch_start_ind[0], m_pFLIm->_params.ch_start_ind[1],
+//	///    m_pFLIm->_params.ch_start_ind[2], m_pFLIm->_params.ch_start_ind[3]);
+//
+//	m_pSpinBox_ChStart[2]->setMaximum((double)(ch_ind - 10) * (double)m_pFLIm->_params.samp_intv);
+//	m_pSpinBox_ChStart[4]->setMinimum((double)(ch_ind + 10) * (double)m_pFLIm->_params.samp_intv);
+//
+//	if (m_pCheckBox_ShowWindow->isChecked())
+//	{
+//		if (!m_pCheckBox_RoiSegmentView->isChecked())
+//		{
+//			m_pScope_PulseView->getRender()->m_pWinLineInd[3] = ch_ind; /// (int)round((float)(ch_ind)* factor);
+//			m_pImageView_PulseImage->getRender()->m_pVLineInd[3] = ch_ind;
+//		}
+//		else
+//		{
+//			m_pScope_PulseView->getRender()->m_pWinLineInd[3] = ch_ind - m_pFLIm->_params.ch_start_ind[0];
+//			m_pImageView_PulseImage->getRender()->m_pVLineInd[3] = ch_ind - m_pFLIm->_params.ch_start_ind[0];
+//		}
+//	}
+//
+//	m_pScope_PulseView->getRender()->update();
+//}
+
 void FlimCalibDlg::resetChStart3(double start)
 {
 	int ch_ind = (int)round(start / m_pFLIm->_params.samp_intv);
 
 	m_pFLIm->_params.ch_start_ind[3] = ch_ind;
+	m_pFLIm->_params.ch_start_ind[4] = ch_ind + FLIM_CH_START_5;
 	m_pConfig->flimChStartInd[3] = ch_ind;
 
-	m_pFLIm->_resize.initiated = false;
-
-	///printf("[Ch 3] %d %d %d %d\n",
+	///printf("[Ch 4] %d %d %d %d\n",
 	///    m_pFLIm->_params.ch_start_ind[0], m_pFLIm->_params.ch_start_ind[1],
 	///    m_pFLIm->_params.ch_start_ind[2], m_pFLIm->_params.ch_start_ind[3]);
 
 	m_pSpinBox_ChStart[2]->setMaximum((double)(ch_ind - 10) * (double)m_pFLIm->_params.samp_intv);
-	m_pSpinBox_ChStart[4]->setMinimum((double)(ch_ind + 10) * (double)m_pFLIm->_params.samp_intv);
 
 	if (m_pCheckBox_ShowWindow->isChecked())
 	{
@@ -733,46 +760,15 @@ void FlimCalibDlg::resetChStart3(double start)
 		{
 			m_pScope_PulseView->getRender()->m_pWinLineInd[3] = ch_ind; /// (int)round((float)(ch_ind)* factor);
 			m_pImageView_PulseImage->getRender()->m_pVLineInd[3] = ch_ind;
+			m_pScope_PulseView->getRender()->m_pWinLineInd[4] = ch_ind + FLIM_CH_START_5;
+			m_pImageView_PulseImage->getRender()->m_pVLineInd[4] = ch_ind + FLIM_CH_START_5;
 		}
 		else
 		{
 			m_pScope_PulseView->getRender()->m_pWinLineInd[3] = ch_ind - m_pFLIm->_params.ch_start_ind[0];
 			m_pImageView_PulseImage->getRender()->m_pVLineInd[3] = ch_ind - m_pFLIm->_params.ch_start_ind[0];
-		}
-	}
-
-	m_pScope_PulseView->getRender()->update();
-}
-
-void FlimCalibDlg::resetChStart4(double start)
-{
-	int ch_ind = (int)round(start / m_pFLIm->_params.samp_intv);
-
-	m_pFLIm->_params.ch_start_ind[4] = ch_ind;
-	m_pFLIm->_params.ch_start_ind[5] = ch_ind + FLIM_CH_START_6;
-	m_pConfig->flimChStartInd[4] = ch_ind;
-
-	///printf("[Ch 4] %d %d %d %d\n",
-	///    m_pFLIm->_params.ch_start_ind[0], m_pFLIm->_params.ch_start_ind[1],
-	///    m_pFLIm->_params.ch_start_ind[2], m_pFLIm->_params.ch_start_ind[3]);
-
-	m_pSpinBox_ChStart[3]->setMaximum((double)(ch_ind - 10) * (double)m_pFLIm->_params.samp_intv);
-
-	if (m_pCheckBox_ShowWindow->isChecked())
-	{
-		if (!m_pCheckBox_RoiSegmentView->isChecked())
-		{
-			m_pScope_PulseView->getRender()->m_pWinLineInd[4] = ch_ind; /// (int)round((float)(ch_ind)* factor);
-			m_pImageView_PulseImage->getRender()->m_pVLineInd[4] = ch_ind;
-			m_pScope_PulseView->getRender()->m_pWinLineInd[5] = ch_ind + FLIM_CH_START_6;
-			m_pImageView_PulseImage->getRender()->m_pVLineInd[5] = ch_ind + FLIM_CH_START_6;
-		}
-		else
-		{
-			m_pScope_PulseView->getRender()->m_pWinLineInd[4] = ch_ind - m_pFLIm->_params.ch_start_ind[0];
-			m_pImageView_PulseImage->getRender()->m_pVLineInd[4] = ch_ind - m_pFLIm->_params.ch_start_ind[0];
-			m_pScope_PulseView->getRender()->m_pWinLineInd[5] = ch_ind - m_pFLIm->_params.ch_start_ind[0] + FLIM_CH_START_6;
-			m_pImageView_PulseImage->getRender()->m_pVLineInd[5] = ch_ind - m_pFLIm->_params.ch_start_ind[0] + FLIM_CH_START_6;
+			m_pScope_PulseView->getRender()->m_pWinLineInd[4] = ch_ind - m_pFLIm->_params.ch_start_ind[0] + FLIM_CH_START_5;
+			m_pImageView_PulseImage->getRender()->m_pVLineInd[4] = ch_ind - m_pFLIm->_params.ch_start_ind[0] + FLIM_CH_START_5;
 		}
 	}
 
@@ -781,8 +777,8 @@ void FlimCalibDlg::resetChStart4(double start)
 
 void FlimCalibDlg::resetDelayTimeOffset()
 {
-    float delay_offset[4];
-    for (int i = 0; i < 4; i++)
+    float delay_offset[3];
+    for (int i = 0; i < 3; i++)
     {
         delay_offset[i] = m_pLineEdit_DelayTimeOffset[i]->text().toFloat();
 

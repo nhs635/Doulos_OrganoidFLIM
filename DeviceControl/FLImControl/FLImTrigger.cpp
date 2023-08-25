@@ -13,7 +13,8 @@ FlimTrigger::FlimTrigger() :
 	frequency(1000.0),
     finite_samps(1),
     counterChannel(NI_FLIM_TRIG_CHANNEL),
-    sourceTerminal(NI_FLIM_TRIG_SOURCE)
+    sourceTerminal(NI_FLIM_TRIG_SOURCE),
+	triggerSource("")
 {
 }
 
@@ -49,7 +50,7 @@ bool FlimTrigger::initialize()
 		return false;
 	}
 
-    if ((res = DAQmxCfgImplicitTiming(_taskHandle, DAQmx_Val_FiniteSamps, finite_samps)) != 0)
+    if ((res = DAQmxCfgImplicitTiming(_taskHandle, DAQmx_Val_FiniteSamps, finite_samps)) != 0) //DAQmx_Val_FiniteSamps
     {
         dumpError(res, "ERROR: Failed to set NI Counter: ");
         return false;

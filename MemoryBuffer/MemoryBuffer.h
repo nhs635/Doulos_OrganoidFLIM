@@ -24,10 +24,9 @@ public:
     explicit MemoryBuffer(QObject *parent = nullptr);
     virtual ~MemoryBuffer();
 
-
 public:
 	// Memory allocation function (buffer for writing)
-    void allocateWritingBuffer();
+    void allocateWritingBuffer(bool _is_flim);
 	void deallocateWritingBuffer();
 
     // Data recording (transfer streaming data to writing buffer)
@@ -55,6 +54,11 @@ private:
 	Configuration* m_pConfig;
 	QOperationTab* m_pOperationTab;
 	QDeviceControlTab* m_pDeviceControlTab;
+	bool is_flim;
+
+public:
+	int dpc_mode;
+	int dpc_illum;
 
 public:
 	bool m_bIsAllocatedWritingBuffer;
@@ -68,6 +72,7 @@ public:
 	
 public:
     std::vector<float*> m_vectorWritingImageBuffer; // writing buffer
+	std::vector<uint16_t*> m_vectorWritingPulseBuffer; // pulse buffer
 	QString m_fileName;
 };
 

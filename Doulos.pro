@@ -36,10 +36,12 @@ win32 {
             $$PWD/lib/intel64_win/ippi.lib \
             $$PWD/lib/intel64_win/ipps.lib
     debug {
-        LIBS += $$PWD/lib/intel64_win/vc14/tbb_debug.lib
+        LIBS += $$PWD/lib/intel64_win/vc14/tbb_debug.lib \
+                $$PWD/lib/tis_udshl12d_x64.lib
     }
     release {
-        LIBS += $$PWD/lib/intel64_win/vc14/tbb.lib
+        LIBS += $$PWD/lib/intel64_win/vc14/tbb.lib \
+                $$PWD/lib/tis_udshl12_x64.lib
     }
     LIBS += $$PWD/lib/intel64_win/mkl_core.lib \
             $$PWD/lib/intel64_win/mkl_tbb_thread.lib \
@@ -59,6 +61,8 @@ SOURCES += Doulos/Doulos.cpp \
 
 SOURCES += DataAcquisition/AlazarDAQ/AlazarDAQ.cpp \
     DataAcquisition/FLImProcess/FLImProcess.cpp \
+    DataAcquisition/QpiProcess/QpiProcess.cpp \
+    DataAcquisition/ImagingSource/ImagingSource.cpp \
     DataAcquisition/ThreadManager.cpp \
     DataAcquisition/DataAcquisition.cpp
 
@@ -69,11 +73,12 @@ SOURCES += DeviceControl/FLImControl/PmtGainControl.cpp \
     DeviceControl/IPGPhotonicsLaser/DigitalInput/DigitalInput.cpp \
     DeviceControl/IPGPhotonicsLaser/DigitalOutput/DigitalOutput.cpp \
     DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.cpp \
+    DeviceControl/ResonantScan/PulseTrainGenerator.cpp \
     DeviceControl/ResonantScan/ResonantScan.cpp \
     DeviceControl/GalvoScan/GalvoScan.cpp \
     DeviceControl/GalvoScan/TwoEdgeTriggerEnable.cpp \
-    DeviceControl/ZaberStage/ZaberStage.cpp \
-    DeviceControl/ZaberStage/zb_serial.cpp
+    DeviceControl/NanoscopeStage/NanoscopeStage.cpp \
+    DeviceControl/DpcIllumination/DpcIllumination.cpp
 
 
 HEADERS += Doulos/Configuration.h \
@@ -88,6 +93,8 @@ HEADERS += Doulos/Configuration.h \
 
 HEADERS += DataAcquisition/AlazarDAQ/AlazarDAQ.h \
     DataAcquisition/FLImProcess/FLImProcess.h \
+    DataAcquisition/QpiProcess/QpiProcess.h \
+    DataAcquisition/ImagingSource/ImagingSource.h \
     DataAcquisition/ThreadManager.h \
     DataAcquisition/DataAcquisition.h
 
@@ -98,11 +105,12 @@ HEADERS += DeviceControl/FLImControl/PmtGainControl.h \
     DeviceControl/IPGPhotonicsLaser/DigitalInput/DigitalInput.h \
     DeviceControl/IPGPhotonicsLaser/DigitalOutput/DigitalOutput.h \
     DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.h \
+    DeviceControl/ResonantScan/PulseTrainGenerator.h \
     DeviceControl/ResonantScan/ResonantScan.h \
     DeviceControl/GalvoScan/GalvoScan.h \
     DeviceControl/GalvoScan/TwoEdgeTriggerEnable.h \
-    DeviceControl/ZaberStage/ZaberStage.h \
-    DeviceControl/ZaberStage/zb_serial.h \
+    DeviceControl/NanoscopeStage/NanoscopeStage.h \
+    DeviceControl/DpcIllumination/DpcIllumination.h \
     DeviceControl/QSerialComm.h
 
 

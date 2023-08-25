@@ -9,8 +9,8 @@ using namespace std;
 
 
 ResonantScan::ResonantScan() :
-	_taskHandle(nullptr),
-	physicalChannel(NI_RESONANT_CHANNEL) 
+	_taskHandle(nullptr) //,
+	//physicalChannel(NI_RESONANT_CHANNEL) 
 {
 }
 

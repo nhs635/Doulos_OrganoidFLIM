@@ -22,7 +22,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     // Initialize user interface
     QString windowTitle("Doulos [%1] v%2");
-    this->setWindowTitle(windowTitle.arg("Organoid FLIM").arg(VERSION));
+    this->setWindowTitle(windowTitle.arg("DPC FLIM (DOCTOR Jeong Moo 'The Greatest Of All Time' Han, Ph.D.)").arg(VERSION));
 
     // Create configuration object
     m_pConfiguration = new Configuration;
@@ -81,7 +81,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_pStatusLabel_StageMoving->setFrameStyle(QFrame::Panel | QFrame::Sunken);
 
     // then add the widget to the status bar
-    statusBar()->addPermanentWidget(pStatusLabel_Temp1, 6);
+    statusBar()->addPermanentWidget(pStatusLabel_Temp1, 10);
     statusBar()->addPermanentWidget(m_pStatusLabel_ImagePos, 1);
     statusBar()->addPermanentWidget(m_pStatusLabel_SyncStatus, 2);
 	statusBar()->addPermanentWidget(m_pStatusLabel_Acquisition, 1);
@@ -94,12 +94,13 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui->centralWidget->setLayout(m_pGridLayout);
 
-    this->setFixedSize(1340, 1050);
+    this->setFixedSize(1640, 1350);
+	this->move(QApplication::desktop()->screen()->rect().center().x() - this->rect().center().x(), 0);
 
     // Connect signal and slot
     connect(m_pTimer, SIGNAL(timeout()), this, SLOT(onTimer()));
 	connect(m_pTimerSync, SIGNAL(timeout()), this, SLOT(onTimerSync()));
-    connect(m_pTabWidget, SIGNAL(currentChanged(int)), this, SLOT(changedTab(int)));
+    connect(m_pTabWidget, SIGNAL(currentChanged(int)), this, SLOT(changedTab(int)));	
 }
 
 MainWindow::~MainWindow()
@@ -122,7 +123,7 @@ void MainWindow::closeEvent(QCloseEvent *e)
         m_pStreamTab->getOperationTab()->setAcquisitionButton(false);
 
 	m_pStreamTab->getDeviceControlTab()->setControlsStatus(false);
-
+	
     if (m_pStreamTab->getDeviceControlTab()->getFlimCalibDlg())
         m_pStreamTab->getDeviceControlTab()->getFlimCalibDlg()->close();
 

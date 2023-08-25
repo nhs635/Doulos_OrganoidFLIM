@@ -27,6 +27,7 @@ ColorTable::ColorTable()
 	m_cNameVector.push_back("bwr");
 	m_cNameVector.push_back("graysb");
 	m_cNameVector.push_back("viridis");
+	m_cNameVector.push_back("hsv2");
 	// 새로운 파일 이름 추가 하기
 
 	for (int i = 0; i < m_cNameVector.size(); i++)
@@ -193,6 +194,14 @@ void QImageView::setCircle(int len, ...)
 	va_end(ap);
 }
 
+void QImageView::setText(QPoint pos, const QString & str, bool is_vertical, QColor color)
+{
+	m_pRenderImage->m_textPos = pos;
+	m_pRenderImage->m_str = str;
+	m_pRenderImage->m_bVertical = is_vertical;
+	m_pRenderImage->m_titleColor = !is_vertical ? color : Qt::black;
+}
+
 void QImageView::setHLineChangeCallback(const std::function<void(int)> &slot) 
 { 
 	m_pRenderImage->DidChangedHLine.clear();
@@ -209,6 +218,18 @@ void QImageView::setRLineChangeCallback(const std::function<void(int)> &slot)
 {
 	m_pRenderImage->DidChangedRLine.clear();
 	m_pRenderImage->DidChangedRLine += slot;
+}
+
+void QImageView::setEnterCallback(const std::function<void(void)>& slot)
+{
+	m_pRenderImage->DidEnter.clear();
+	m_pRenderImage->DidEnter += slot;
+}
+
+void QImageView::setLeaveCallback(const std::function<void(void)>& slot)
+{
+	m_pRenderImage->DidLeave.clear();
+	m_pRenderImage->DidLeave += slot;
 }
 
 void QImageView::setMovedMouseCallback(const std::function<void(QPoint&)> &slot)
@@ -250,7 +271,8 @@ void QImageView::drawRgbImage(uint8_t* pImage)
 QRenderImage::QRenderImage(QWidget *parent) :
 	QWidget(parent), m_pImage(nullptr), m_colorLine(0x00ff00),
 	m_bMeasureDistance(false), m_nClicked(0),
-	m_hLineLen(0), m_vLineLen(0), m_circLen(0), m_bRadial(false), m_bPixelPos(false)
+	m_hLineLen(0), m_vLineLen(0), m_circLen(0), m_bRadial(false), m_bPixelPos(false),
+	m_str(""), m_bVertical(false), m_titleColor(Qt::white)
 {
 	m_pHLineInd = new int[10];
 	m_pVLineInd = new int[10];
@@ -328,6 +350,22 @@ void QRenderImage::paintEvent(QPaintEvent *)
 		painter.drawEllipse(center, radius, radius);
 	}
 
+	// Set text
+	if (m_str != "")
+	{
+		QPen pen; pen.setColor(m_titleColor); pen.setWidth(1);
+		painter.setPen(pen);
+		QFont font; font.setBold(true); font.setPointSize(!m_bVertical ? 13 : 9);
+		painter.setFont(font);
+
+		painter.rotate(!m_bVertical ? 0 : 90);
+		if (!m_bVertical)
+			painter.drawText(QRect(m_textPos.x(), m_textPos.y(), w, h), Qt::AlignLeft, m_str);
+		else
+			painter.drawText(0, -24, this->height(), this->width(), Qt::AlignCenter, m_str);
+		painter.rotate(!m_bVertical ? 0 : -90);
+	}
+
 	// Measure distance
 	if (m_bMeasureDistance)
 	{
@@ -358,6 +396,18 @@ void QRenderImage::paintEvent(QPaintEvent *)
 			}
 		}
 	}
+}
+
+void QRenderImage::enterEvent(QEvent *)
+{
+	DidEnter();
+	update();
+}
+
+void QRenderImage::leaveEvent(QEvent *)
+{
+	DidLeave();
+	update();
 }
 
 void QRenderImage::mousePressEvent(QMouseEvent *e)

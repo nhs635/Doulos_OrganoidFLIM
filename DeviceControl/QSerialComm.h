@@ -29,6 +29,11 @@ public:
 	}
 
 public:
+	inline const char* getPortName() { return m_PortName; }
+	inline void setPortName(const char* port_name) { m_PortName = port_name; }
+	inline bool getConnectState() { return m_bIsConnected; }
+
+public:
 	bool openSerialPort(QString portName, 
 		QSerialPort::BaudRate baudRate = QSerialPort::Baud9600, 
 		QSerialPort::DataBits dataBits = QSerialPort::Data8,
@@ -38,7 +43,7 @@ public:
 	{
 		m_pSerialPort->setPortName(portName);
 		m_pSerialPort->setBaudRate(baudRate);
-		m_pSerialPort->setDataBits( dataBits);
+		m_pSerialPort->setDataBits(dataBits);
 		m_pSerialPort->setParity(parity);
 		m_pSerialPort->setStopBits(stopBits);
 		m_pSerialPort->setFlowControl(flowControl);
@@ -61,20 +66,25 @@ public:
 		m_bIsConnected = false;
 	}
 
-	bool writeSerialPort(char* data)
+	bool writeSerialPort(char* data, qint64 len = 0)
 	{
 		if (m_pSerialPort->isOpen())
 		{
-			qint64 nWrote = m_pSerialPort->write(data);			
+			qint64 nWrote;
+			if (len == 0)
+				nWrote = m_pSerialPort->write(data);
+			else
+				nWrote = m_pSerialPort->write(data, len);
+
 			if (nWrote != 0)
 				return true;
 		}
 		return false;
 	}
 
-	void waitUntilResponse()
+	void waitUntilResponse(int msec = 100)
 	{
-		m_pSerialPort->waitForReadyRead(100);
+		m_pSerialPort->waitForReadyRead(msec);
 	}
 	
 public slots:
@@ -87,13 +97,13 @@ public slots:
 		DidReadBuffer(buffer, nRead);
 	}
 
-
 public:
 	callback2<char*, qint64> DidReadBuffer;
-	bool m_bIsConnected;
-
+	
 private:
 	QSerialPort* m_pSerialPort;
+	const char* m_PortName;
+	bool m_bIsConnected;
 };
 
 #endif // _SERIAL_COMM_H_

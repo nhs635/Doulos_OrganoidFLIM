@@ -20,7 +20,7 @@ public:
 
 public:
 	enum colortable { gray = 0, inv_gray, sepia, jet, parula, hot, fire, hsv, 
-		smart, blueorange, cool, gem, greenfireblue, ice, lifetime2, vessel, hsv1, bwr, graysb, viridis }; // 새로 만든 colortable 이름 추가하기
+		smart, blueorange, cool, gem, greenfireblue, ice, lifetime2, vessel, hsv1, bwr, graysb, viridis, hsv2 }; // 새로 만든 colortable 이름 추가하기
 	QVector<QString> m_cNameVector;
 	ColorTableVector m_colorTableVector;
 };
@@ -56,12 +56,15 @@ public:
 	void setHorizontalLine(int len, ...);
 	void setVerticalLine(int len, ...);
 	void setCircle(int len, ...);
+	void setText(QPoint pos, const QString& str, bool is_vertical = false, QColor color = Qt::white);
 
 	void setHLineChangeCallback(const std::function<void(int)> &slot);
 	void setVLineChangeCallback(const std::function<void(int)> &slot);
 	void setRLineChangeCallback(const std::function<void(int)> &slot);
 
 public:
+	void setEnterCallback(const std::function<void(void)> &slot);
+	void setLeaveCallback(const std::function<void(void)> &slot);
 	void setMovedMouseCallback(const std::function<void(QPoint&)> &slot);
 	void setClickedMouseCallback(const std::function<void(int, int)> &slot);
 	void setDoubleClickedMouseCallback(const std::function<void(void)> &slot);
@@ -98,6 +101,8 @@ public:
 
 protected:
     void paintEvent(QPaintEvent *);
+	void enterEvent(QEvent *);
+	void leaveEvent(QEvent *);
 	void mousePressEvent(QMouseEvent *);
 	void mouseDoubleClickEvent(QMouseEvent *);
 	void mouseMoveEvent(QMouseEvent *);
@@ -121,6 +126,12 @@ public:
 	int m_nClicked;
 	int m_point[2][2];
 
+	QPoint m_textPos;
+	QString m_str;
+	bool m_bVertical;
+	QColor m_titleColor;
+
+	callback<void> DidEnter, DidLeave;
 	callback<int> DidChangedHLine;
 	callback<int> DidChangedVLine;
 	callback<int> DidChangedRLine;
