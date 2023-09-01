@@ -1,5 +1,5 @@
 
-#include "FlimTrigger.h"
+#include "PulseTrainGenerator.h"
 #include <Doulos/Configuration.h>
 
 #include <iostream>
@@ -8,27 +8,26 @@
 using namespace std;
 
 
-FlimTrigger::FlimTrigger() :
+PulseTrainGenerator::PulseTrainGenerator() :
 	_taskHandle(nullptr),
 	frequency(1000.0),
-    finite_samps(1),
-    counterChannel(NI_FLIM_TRIG_CHANNEL),
-    sourceTerminal(NI_FLIM_TRIG_SOURCE),
+    finite_samps(100),
+    counterChannel(""),    
 	triggerSource("")
 {
 }
 
 
-FlimTrigger::~FlimTrigger()
+PulseTrainGenerator::~PulseTrainGenerator()
 {
     if (_taskHandle)
         DAQmxClearTask(_taskHandle);
 }
 
 
-bool FlimTrigger::initialize()
+bool PulseTrainGenerator::initialize()
 {	
-    SendStatusMessage("Initializing NI Counter for triggering FLIm laser & digitizer...", false);
+    SendStatusMessage("Initializing NI Counter for triggering with fixed frequency...", false);
 		
     int res;
 
@@ -38,47 +37,44 @@ bool FlimTrigger::initialize()
         return false;
     }
 
-    if ((res = DAQmxCreateCOPulseChanFreq(_taskHandle, counterChannel, "", DAQmx_Val_Hz, DAQmx_Val_Low, 0, frequency, 0.50)) != 0)
+    if ((res = DAQmxCreateCOPulseChanFreq(_taskHandle, counterChannel, "", DAQmx_Val_Hz, DAQmx_Val_Low, 0, frequency, 0.5)) != 0)
     {
         dumpError(res, "ERROR: Failed to set NI Counter: ");
         return false;
     }
 
-	if ((res = DAQmxCfgDigEdgeStartTrig(_taskHandle, sourceTerminal, DAQmx_Val_Rising)) != 0)
+	if (triggerSource != "")
 	{
-		dumpError(res, "ERROR: Failed to set NI Counter: ");
-		return false;
+		if ((res = DAQmxCfgDigEdgeStartTrig(_taskHandle, triggerSource, DAQmx_Val_Rising)) != 0)
+		{
+			dumpError(res, "ERROR: Failed to set NI Counter: ");
+			return false;
+		}
 	}
 
-    if ((res = DAQmxCfgImplicitTiming(_taskHandle, DAQmx_Val_FiniteSamps, finite_samps)) != 0) //DAQmx_Val_FiniteSamps
+    if ((res = DAQmxCfgImplicitTiming(_taskHandle, DAQmx_Val_ContSamps, finite_samps)) != 0) 
     {
         dumpError(res, "ERROR: Failed to set NI Counter: ");
         return false;
     }
 
-	if ((res = DAQmxSetStartTrigRetriggerable(_taskHandle, TRUE)) != 0)
-	{
-		dumpError(res, "ERROR: Failed to set NI Counter: ");
-		return false;
-	}
-
-    SendStatusMessage("NI Counter for triggering FLIm laser & digitizer is successfully initialized.", false);
+    SendStatusMessage("NI Counter for triggering with fixed frequency is successfully initialized.", false);
 
     return true;
 }
 
 
-void FlimTrigger::start()
+void PulseTrainGenerator::start()
 {
     if (_taskHandle)
     {
-        SendStatusMessage("NI Counter is issueing external triggers for FLIm laser & digitizer...", false);
+        SendStatusMessage("NI Counter is issueing external triggers with fixed frequency...", false);
         DAQmxStartTask(_taskHandle);
     }
 }
 
 
-void FlimTrigger::stop()
+void PulseTrainGenerator::stop()
 {
     if (_taskHandle)
     {
@@ -90,7 +86,7 @@ void FlimTrigger::stop()
 }
 
 
-void FlimTrigger::dumpError(int res, const char* pPreamble)
+void PulseTrainGenerator::dumpError(int res, const char* pPreamble)
 {	
     char errBuff[2048];
     if (res < 0)

@@ -464,64 +464,61 @@ void QStreamTab::setFlimAcquisitionCallback()
 
 		static bool recording_phase = false;
 		
-		if ((frame_count % (FAST_TOTAL_PIECES / FAST_DIR_FACTOR)) < FAST_VALID_PIECES)  // Pass only first third piece (CRS valid region)
+		// Data transfer for FLIm processing
+		const uint16_t* frame_ptr = (uint16_t*)_frame_ptr;
+
+		// Get buffer from threading queue
+		float* pulse_ptr = nullptr;
 		{
-			// Data transfer for FLIm processing
-			const uint16_t* frame_ptr = (uint16_t*)_frame_ptr;
+			std::unique_lock<std::mutex> lock(m_syncFlimProcessing.mtx);
 
-			// Get buffer from threading queue
-			float* pulse_ptr = nullptr;
+			if (!m_syncFlimProcessing.queue_buffer.empty())
 			{
-				std::unique_lock<std::mutex> lock(m_syncFlimProcessing.mtx);
-
-				if (!m_syncFlimProcessing.queue_buffer.empty())
-				{
-					pulse_ptr = m_syncFlimProcessing.queue_buffer.front();
-					m_syncFlimProcessing.queue_buffer.pop();
-				}
-			}
-
-			if (pulse_ptr != nullptr)
-			{
-				// Body			
-				ippsConvert_16u32f(frame_ptr, pulse_ptr, m_pConfig->bufferSize);
-
-				// Show pulse
-				int frame_count0 = frame_count % (FAST_TOTAL_PIECES / FAST_DIR_FACTOR * (m_pConfig->nLines + GALVO_FLYING_BACK + 2));
-				{
-					if (m_pDeviceControlTab->getFlimCalibDlg())
-					{
-						int x, y;
-						m_pVisualizationTab->getPixelPos(&x, &y);
-
-						///printf("(%d %d) (%d %d) (%d %d)\n", frame_count, frame_count0, x, y, valid_buf, x0);
-
-						int x0 = !(y % FAST_DIR_FACTOR) ? x : m_pConfig->nPixels - 1 - x;
-						if (frame_count0 % (FAST_TOTAL_PIECES / FAST_DIR_FACTOR) == x0 / N_TIMES)
-							if (frame_count0 / (FAST_TOTAL_PIECES / FAST_DIR_FACTOR) == (y + GALVO_FLYING_BACK + 2))
-								emit m_pDeviceControlTab->getFlimCalibDlg()->plotRoiPulse(pulse_ptr, x0 % N_TIMES);
-					}
-				}
-
-				// Copy pulse data to writing buffer
-				if ((m_pConfig->imageAveragingFrames == 1) && !m_pCheckBox_StitchingMode->isChecked())
-				{
-					int frame_count1 = ((frame_count % FAST_TOTAL_PIECES) + FAST_VALID_PIECES * (frame_count / FAST_TOTAL_PIECES)) % pMemBuff->m_vectorWritingPulseBuffer.size();
-
-					if (pMemBuff->m_bIsRecording && (frame_count1 == 0))
-						recording_phase = true;
-
-					if (recording_phase)
-						memcpy(pMemBuff->m_vectorWritingPulseBuffer.at(frame_count1), frame_ptr, sizeof(uint16_t) * m_pConfig->nScans * m_pConfig->nTimes);
-
-					if (pMemBuff->m_bIsRecording && (frame_count1 == pMemBuff->m_vectorWritingPulseBuffer.size() - 1))
-						recording_phase = false;
-				}
-
-				// Push the buffer to sync Queue
-				m_syncFlimProcessing.Queue_sync.push(pulse_ptr);
+				pulse_ptr = m_syncFlimProcessing.queue_buffer.front();
+				m_syncFlimProcessing.queue_buffer.pop();
 			}
 		}
+
+		if (pulse_ptr != nullptr)
+		{
+			// Body			
+			ippsConvert_16u32f(frame_ptr, pulse_ptr, m_pConfig->bufferSize);
+
+			// Show pulse
+			int frame_count0 = frame_count % (FAST_TOTAL_PIECES / FAST_DIR_FACTOR * (m_pConfig->nLines + GALVO_FLYING_BACK + 2));
+			{
+				if (m_pDeviceControlTab->getFlimCalibDlg())
+				{
+					int x, y;
+					m_pVisualizationTab->getPixelPos(&x, &y);
+
+					///printf("(%d %d) (%d %d) (%d %d)\n", frame_count, frame_count0, x, y, valid_buf, x0);
+
+					int x0 = !(y % FAST_DIR_FACTOR) ? x : m_pConfig->nPixels - 1 - x;
+					if (frame_count0 % (FAST_TOTAL_PIECES / FAST_DIR_FACTOR) == x0 / N_TIMES)
+						if (frame_count0 / (FAST_TOTAL_PIECES / FAST_DIR_FACTOR) == (y + GALVO_FLYING_BACK + 2))
+							emit m_pDeviceControlTab->getFlimCalibDlg()->plotRoiPulse(pulse_ptr, x0 % N_TIMES);
+				}
+			}
+
+			// Copy pulse data to writing buffer
+			if ((m_pConfig->imageAveragingFrames == 1) && !m_pCheckBox_StitchingMode->isChecked())
+			{
+				int frame_count1 = ((frame_count % FAST_TOTAL_PIECES) + frame_count) % pMemBuff->m_vectorWritingPulseBuffer.size();
+
+				if (pMemBuff->m_bIsRecording && (frame_count1 == 0))
+					recording_phase = true;
+
+				if (recording_phase)
+					memcpy(pMemBuff->m_vectorWritingPulseBuffer.at(frame_count1), frame_ptr, sizeof(uint16_t) * m_pConfig->nScans * m_pConfig->nTimes);
+
+				if (pMemBuff->m_bIsRecording && (frame_count1 == pMemBuff->m_vectorWritingPulseBuffer.size() - 1))
+					recording_phase = false;
+			}
+
+			// Push the buffer to sync Queue
+			m_syncFlimProcessing.Queue_sync.push(pulse_ptr);
+		}		
     });
 
     pDataAcq->ConnectDaqStopFlimData([&]() {
@@ -1168,137 +1165,137 @@ void QStreamTab::changeBiDirScanComp(double comp)
 void QStreamTab::autoCrsCompSet()
 {
 #if FAST_DIR_FACTOR == 2
-	//std::thread auto_comp([&]()
-	//{
-		// Set zero first
-		m_pDoubleSpinBox_BiDirScanComp->setValue(0.0);
+	////std::thread auto_comp([&]()
+	////{
+	//	// Set zero first
+	//	m_pDoubleSpinBox_BiDirScanComp->setValue(0.0);
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(m_pConfig->nLines));
+	//	std::this_thread::sleep_for(std::chrono::milliseconds(m_pConfig->nLines));
 
-		// Create buffer
-		np::FloatArray2 frame(m_pConfig->nPixels, m_pConfig->nLines);
-		ippsConvert_8u32f(m_pVisualizationTab->getImgObjIntensity()->arr, frame, frame.length());
+	//	// Create buffer
+	//	np::FloatArray2 frame(m_pConfig->nPixels, m_pConfig->nLines);
+	//	ippsConvert_8u32f(m_pVisualizationTab->getImgObjIntensity()->arr, frame, frame.length());
 
-		np::FloatArray2 forward(m_pConfig->nPixels, m_pConfig->nLines / 2);
-		np::FloatArray2 backward(m_pConfig->nPixels, m_pConfig->nLines / 2);
+	//	np::FloatArray2 forward(m_pConfig->nPixels, m_pConfig->nLines / 2);
+	//	np::FloatArray2 backward(m_pConfig->nPixels, m_pConfig->nLines / 2);
 
-		ippiCopy_32f_C1R(&frame(0, 0), sizeof(float) * 2 * m_pConfig->nPixels,
-			forward, sizeof(float) * m_pConfig->nPixels,
-			{ m_pConfig->nPixels, m_pConfig->nLines / 2 });
-		ippiCopy_32f_C1R(&frame(0, 1), sizeof(float) * 2 * m_pConfig->nPixels,
-			backward, sizeof(float) * m_pConfig->nPixels,
-			{ m_pConfig->nPixels, m_pConfig->nLines / 2 });
+	//	ippiCopy_32f_C1R(&frame(0, 0), sizeof(float) * 2 * m_pConfig->nPixels,
+	//		forward, sizeof(float) * m_pConfig->nPixels,
+	//		{ m_pConfig->nPixels, m_pConfig->nLines / 2 });
+	//	ippiCopy_32f_C1R(&frame(0, 1), sizeof(float) * 2 * m_pConfig->nPixels,
+	//		backward, sizeof(float) * m_pConfig->nPixels,
+	//		{ m_pConfig->nPixels, m_pConfig->nLines / 2 });
 
-		ippsDivC_32f_I(255.0f, forward, forward.length());
-		ippsDivC_32f_I(255.0f, backward, backward.length());
+	//	ippsDivC_32f_I(255.0f, forward, forward.length());
+	//	ippsDivC_32f_I(255.0f, backward, backward.length());
 
-		// Spline parameters	
-		MKL_INT dorder = 1;
-		MKL_INT nx = 100 + 1; // original data length
-		MKL_INT nsite = 1000 + 1; // interpolated data length		
-		float x[2] = { 0.0f, (float)nx - 1.0f }; // data range
-		float* scoeff = new float[(nx - 1) * DF_PP_CUBIC];
+	//	// Spline parameters	
+	//	MKL_INT dorder = 1;
+	//	MKL_INT nx = 100 + 1; // original data length
+	//	MKL_INT nsite = 1000 + 1; // interpolated data length		
+	//	float x[2] = { 0.0f, (float)nx - 1.0f }; // data range
+	//	float* scoeff = new float[(nx - 1) * DF_PP_CUBIC];
 
-		// Correlation buffers
-		np::FloatArray corr_coefs0(nx);
-		np::FloatArray corr_coefs(nsite);
+	//	// Correlation buffers
+	//	np::FloatArray corr_coefs0(nx);
+	//	np::FloatArray corr_coefs(nsite);
 
-		// Shifting along A-line dimension
-		//int k = 1;
-		for (int j = 0; j < nx; j++)
-		{
-			np::FloatArray fixed_vector, moving_vector;
+	//	// Shifting along A-line dimension
+	//	//int k = 1;
+	//	for (int j = 0; j < nx; j++)
+	//	{
+	//		np::FloatArray fixed_vector, moving_vector;
 
-			Ipp32f x_mean, x_std;
-			Ipp32f y_mean, y_std;
+	//		Ipp32f x_mean, x_std;
+	//		Ipp32f y_mean, y_std;
 
-			if (j < 0)
-			{
-				// Fixed
-				fixed_vector = np::FloatArray((forward.size(0) + j) * forward.size(1));
+	//		if (j < 0)
+	//		{
+	//			// Fixed
+	//			fixed_vector = np::FloatArray((forward.size(0) + j) * forward.size(1));
 
-				ippiCopy_32f_C1R(&forward(-j, 0), sizeof(float) * forward.size(0),
-					fixed_vector, sizeof(float) * (forward.size(0) + j),
-					{ forward.size(0) + j, forward.size(1) });
-				ippsMeanStdDev_32f(fixed_vector, fixed_vector.length(), &x_mean, &x_std, ippAlgHintFast);
-				ippsSubC_32f_I(x_mean, fixed_vector, fixed_vector.length());
+	//			ippiCopy_32f_C1R(&forward(-j, 0), sizeof(float) * forward.size(0),
+	//				fixed_vector, sizeof(float) * (forward.size(0) + j),
+	//				{ forward.size(0) + j, forward.size(1) });
+	//			ippsMeanStdDev_32f(fixed_vector, fixed_vector.length(), &x_mean, &x_std, ippAlgHintFast);
+	//			ippsSubC_32f_I(x_mean, fixed_vector, fixed_vector.length());
 
-				// Moving
-				moving_vector = np::FloatArray((backward.size(0) + j) * backward.size(1));
+	//			// Moving
+	//			moving_vector = np::FloatArray((backward.size(0) + j) * backward.size(1));
 
-				ippiCopy_32f_C1R(&backward(0, 0), sizeof(float) * backward.size(0),
-					moving_vector, sizeof(float) * (backward.size(0) + j),
-					{ backward.size(0) + j, backward.size(1) });
-				ippsMeanStdDev_32f(moving_vector, moving_vector.length(), &y_mean, &y_std, ippAlgHintFast);
-				ippsSubC_32f_I(y_mean, moving_vector, moving_vector.length());
-			}
-			else
-			{
-				// Fixed
-				fixed_vector = np::FloatArray((forward.size(0) - j) * forward.size(1));
+	//			ippiCopy_32f_C1R(&backward(0, 0), sizeof(float) * backward.size(0),
+	//				moving_vector, sizeof(float) * (backward.size(0) + j),
+	//				{ backward.size(0) + j, backward.size(1) });
+	//			ippsMeanStdDev_32f(moving_vector, moving_vector.length(), &y_mean, &y_std, ippAlgHintFast);
+	//			ippsSubC_32f_I(y_mean, moving_vector, moving_vector.length());
+	//		}
+	//		else
+	//		{
+	//			// Fixed
+	//			fixed_vector = np::FloatArray((forward.size(0) - j) * forward.size(1));
 
-				ippiCopy_32f_C1R(&forward(0, 0), sizeof(float) * forward.size(0),
-					fixed_vector, sizeof(float) * (forward.size(0) - j),
-					{ forward.size(0) - j, forward.size(1) });
-				ippsMeanStdDev_32f(fixed_vector, fixed_vector.length(), &x_mean, &x_std, ippAlgHintFast);
-				ippsSubC_32f_I(x_mean, fixed_vector, fixed_vector.length());
+	//			ippiCopy_32f_C1R(&forward(0, 0), sizeof(float) * forward.size(0),
+	//				fixed_vector, sizeof(float) * (forward.size(0) - j),
+	//				{ forward.size(0) - j, forward.size(1) });
+	//			ippsMeanStdDev_32f(fixed_vector, fixed_vector.length(), &x_mean, &x_std, ippAlgHintFast);
+	//			ippsSubC_32f_I(x_mean, fixed_vector, fixed_vector.length());
 
-				// Moving
-				moving_vector = np::FloatArray((backward.size(0) - j) * backward.size(1));
+	//			// Moving
+	//			moving_vector = np::FloatArray((backward.size(0) - j) * backward.size(1));
 
-				ippiCopy_32f_C1R(&backward(j, 0), sizeof(float) * backward.size(0),
-					moving_vector, sizeof(float) * (backward.size(0) - j),
-					{ backward.size(0) - j, backward.size(1) });
-				ippsMeanStdDev_32f(moving_vector, moving_vector.length(), &y_mean, &y_std, ippAlgHintFast);
-				ippsSubC_32f_I(y_mean, moving_vector, moving_vector.length());
-			}
+	//			ippiCopy_32f_C1R(&backward(j, 0), sizeof(float) * backward.size(0),
+	//				moving_vector, sizeof(float) * (backward.size(0) - j),
+	//				{ backward.size(0) - j, backward.size(1) });
+	//			ippsMeanStdDev_32f(moving_vector, moving_vector.length(), &y_mean, &y_std, ippAlgHintFast);
+	//			ippsSubC_32f_I(y_mean, moving_vector, moving_vector.length());
+	//		}
 
-			// Correlation coefficient
-			ippsMul_32f_I(fixed_vector, moving_vector, moving_vector.length());
+	//		// Correlation coefficient
+	//		ippsMul_32f_I(fixed_vector, moving_vector, moving_vector.length());
 
-			Ipp32f cov;
-			ippsSum_32f(moving_vector, moving_vector.length(), &cov, ippAlgHintFast);
-			cov = cov / (moving_vector.length() - 1);
+	//		Ipp32f cov;
+	//		ippsSum_32f(moving_vector, moving_vector.length(), &cov, ippAlgHintFast);
+	//		cov = cov / (moving_vector.length() - 1);
 
-			corr_coefs0(j) = cov / x_std / y_std * ((float)m_pConfig->nPixels / (float)(m_pConfig->nPixels - abs(j)));
+	//		corr_coefs0(j) = cov / x_std / y_std * ((float)m_pConfig->nPixels / (float)(m_pConfig->nPixels - abs(j)));
 
-			//k++;
-		}
+	//		//k++;
+	//	}
 
-		// Spline interpolation		
-		DFTaskPtr task1;
-		dfsNewTask1D(&task1, nx, x, DF_UNIFORM_PARTITION, 1, corr_coefs0.raw_ptr(), DF_MATRIX_STORAGE_ROWS);
-		dfsEditPPSpline1D(task1, DF_PP_CUBIC, DF_PP_NATURAL, DF_BC_NOT_A_KNOT, 0, DF_NO_IC, 0, scoeff, DF_NO_HINT);
-		dfsConstruct1D(task1, DF_PP_SPLINE, DF_METHOD_STD);
-		dfsInterpolate1D(task1, DF_INTERP, DF_METHOD_PP, nsite, x, DF_UNIFORM_PARTITION, 1, &dorder,
-			DF_NO_APRIORI_INFO, corr_coefs.raw_ptr(), DF_MATRIX_STORAGE_ROWS, NULL);
-		dfDeleteTask(&task1);
-		mkl_free_buffers();
+	//	// Spline interpolation		
+	//	DFTaskPtr task1;
+	//	dfsNewTask1D(&task1, nx, x, DF_UNIFORM_PARTITION, 1, corr_coefs0.raw_ptr(), DF_MATRIX_STORAGE_ROWS);
+	//	dfsEditPPSpline1D(task1, DF_PP_CUBIC, DF_PP_NATURAL, DF_BC_NOT_A_KNOT, 0, DF_NO_IC, 0, scoeff, DF_NO_HINT);
+	//	dfsConstruct1D(task1, DF_PP_SPLINE, DF_METHOD_STD);
+	//	dfsInterpolate1D(task1, DF_INTERP, DF_METHOD_PP, nsite, x, DF_UNIFORM_PARTITION, 1, &dorder,
+	//		DF_NO_APRIORI_INFO, corr_coefs.raw_ptr(), DF_MATRIX_STORAGE_ROWS, NULL);
+	//	dfDeleteTask(&task1);
+	//	mkl_free_buffers();
 
-		delete[] scoeff;
+	//	delete[] scoeff;
 
-		QFile file("corr.data");
-		if (file.open(QIODevice::WriteOnly))
-		{
-			file.write(reinterpret_cast<char*>(corr_coefs.raw_ptr()), sizeof(float) * corr_coefs.length());
-			file.close();
-		}
+	//	QFile file("corr.data");
+	//	if (file.open(QIODevice::WriteOnly))
+	//	{
+	//		file.write(reinterpret_cast<char*>(corr_coefs.raw_ptr()), sizeof(float) * corr_coefs.length());
+	//		file.close();
+	//	}
 
-		// Find correction index
-		Ipp32f cmax; int cidx;
-		//ippsMaxIndx_32f(&corr_coefs[1000], (corr_coefs.length() - 1) / 2 + 1, &cmax, &cidx);
-		//float cidx1 = float(cidx) / 10.0f;
+	//	// Find correction index
+	//	Ipp32f cmax; int cidx;
+	//	//ippsMaxIndx_32f(&corr_coefs[1000], (corr_coefs.length() - 1) / 2 + 1, &cmax, &cidx);
+	//	//float cidx1 = float(cidx) / 10.0f;
 
-		ippsMaxIndx_32f(corr_coefs0, corr_coefs0.length(), &cmax, &cidx);
-		float cidx1 = float(cidx); // / 10.0f;
+	//	ippsMaxIndx_32f(corr_coefs0, corr_coefs0.length(), &cmax, &cidx);
+	//	float cidx1 = float(cidx); // / 10.0f;
 
-		ippsMaxIndx_32f(corr_coefs, corr_coefs.length(), &cmax, &cidx);
-		float cidx2 = float(cidx) / 10.0f;
-		printf("%f\n", cidx2);
+	//	ippsMaxIndx_32f(corr_coefs, corr_coefs.length(), &cmax, &cidx);
+	//	float cidx2 = float(cidx) / 10.0f;
+	//	printf("%f\n", cidx2);
 
-		m_pDoubleSpinBox_BiDirScanComp->setValue(cidx1);
-	//});
-	//auto_comp.detach();
+	//	m_pDoubleSpinBox_BiDirScanComp->setValue(cidx1);
+	////});
+	////auto_comp.detach();
 #endif
 }
 

@@ -12,8 +12,12 @@ public:
 	GalvoScan();
 	~GalvoScan();
 	
-	double pp_voltage;
-	double offset;
+	double freq_fast;
+	double pp_voltage_fast;
+	double pp_voltage_slow;
+	double offset_fast;
+	double offset_slow;
+	double max_rate;
 	int step;
 	
 	bool initialize();
@@ -31,7 +35,6 @@ public:
     callback2<const char*, bool> SendStatusMessage;
 
 private:	
-	double max_rate;
 	double* data;
 	
 	TaskHandle _taskHandle;

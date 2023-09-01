@@ -9,16 +9,11 @@
 #include <Doulos/Dialog/FlimCalibDlg.h>
 #include <Doulos/Viewer/QImageView.h>
 
-#include <DeviceControl/FLImControl/PmtGainControl.h>
-#include <DeviceControl/FLImControl/FlimTrigger.h>
+#include <DeviceControl/PmtGainControl/PmtGainControl.h>
+#include <DeviceControl/PulseTrainGenerator/PulseTrainGenerator.h>
+#include <DeviceControl/PulseTrainGenerator/PulseTrainDivider.h>
 #include <DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.h>
-
-#include <DeviceControl/ResonantScan/PulseTrainGenerator.h>
-#include <DeviceControl/ResonantScan/ResonantScan.h>
 #include <DeviceControl/GalvoScan/GalvoScan.h>
-#if (CRS_DIR_FACTOR == 2)
-#include <DeviceControl/GalvoScan/TwoEdgeTriggerEnable.h>
-#endif
 #include <DeviceControl/NanoscopeStage/NanoscopeStage.h>
 #include <DeviceControl/DpcIllumination/DpcIllumination.h>
 
@@ -31,12 +26,12 @@
 
 
 QDeviceControlTab::QDeviceControlTab(QWidget *parent) :
-    QDialog(parent), m_pPmtGainControl(nullptr), m_pFlimTrigControlLaser(nullptr), m_pFlimTrigControlDAQ(nullptr),
+    QDialog(parent), m_pPmtGainControl(nullptr), 
+	m_pFlimTrigControlLaser(nullptr), m_pFlimTrigControlDAQ(nullptr), m_pMasterTrigger(nullptr),
     m_pIPGPhotonicsLaser(nullptr), m_pFlimCalibDlg(nullptr), 
-	m_pGalvoScan(nullptr), m_pNanoscopeStage(nullptr), m_pDpcIllumControl(nullptr)
-#if (CRS_DIR_FACTOR == 2)
-	, m_pTwoEdgeTriggerEnable(nullptr)
-#endif
+	m_pGalvoSlaveTrigger(nullptr), m_pGalvoScan(nullptr), 
+	m_pNanoscopeStage(nullptr), 
+	m_pDpcIllumControl(nullptr)
 {
 	// Set main window objects
     m_pStreamTab = dynamic_cast<QStreamTab*>(parent);
@@ -228,30 +223,28 @@ void QDeviceControlTab::createScanControl()
     m_pCheckBox_GalvoScanControl = new QCheckBox(m_pGroupBox_ScannerControl);
     m_pCheckBox_GalvoScanControl->setText("Start Galvano Mirror Scanning");
 	
-	m_pLineEdit_GalvoFastScanFreq = new QLineEdit(m_pGroupBox_ScannerControl);
-	m_pLineEdit_GalvoFastScanFreq->setFixedWidth(35);
-	m_pLineEdit_GalvoFastScanFreq->setText(QString::number(FAST_SCAN_FREQ));	
-	m_pLineEdit_GalvoFastScanFreq->setAlignment(Qt::AlignCenter);
+	m_pLabel_GalvoFastScanFreq = new QLabel(QString("Scan Freq  %1 Hz").arg(FAST_SCAN_FREQ), m_pGroupBox_ScannerControl);
 	
-    m_pLineEdit_PeakToPeakVoltage = new QLineEdit(m_pGroupBox_ScannerControl);
-    m_pLineEdit_PeakToPeakVoltage->setFixedWidth(30);
-    m_pLineEdit_PeakToPeakVoltage->setText(QString::number(m_pConfig->galvoScanVoltage, 'f', 1));
-    m_pLineEdit_PeakToPeakVoltage->setAlignment(Qt::AlignCenter);
-    m_pLineEdit_PeakToPeakVoltage->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+	for (int i = 0; i < 2; i++)
+	{
+		m_pLineEdit_PeakToPeakVoltage[i] = new QLineEdit(m_pGroupBox_ScannerControl);
+		m_pLineEdit_PeakToPeakVoltage[i]->setFixedWidth(30);
+		m_pLineEdit_PeakToPeakVoltage[i]->setText(QString::number(m_pConfig->galvoScanVoltage[i], 'f', 1));
+		m_pLineEdit_PeakToPeakVoltage[i]->setAlignment(Qt::AlignCenter);
+		m_pLineEdit_PeakToPeakVoltage[i]->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-    m_pLineEdit_OffsetVoltage = new QLineEdit(m_pGroupBox_ScannerControl);
-    m_pLineEdit_OffsetVoltage->setFixedWidth(30);
-    m_pLineEdit_OffsetVoltage->setText(QString::number(m_pConfig->galvoScanVoltageOffset, 'f', 1));
-    m_pLineEdit_OffsetVoltage->setAlignment(Qt::AlignCenter);
-    m_pLineEdit_OffsetVoltage->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-		
-	m_pLabel_GalvoFastScanFreq = new QLabel("Scan Freq ", m_pGroupBox_ScannerControl);
-	m_pLabel_GalvoFastScanFreqHz = new QLabel("Hz", m_pGroupBox_ScannerControl);
-    m_pLabel_ScanVoltage = new QLabel("Scan Voltage ", m_pGroupBox_ScannerControl);
-    m_pLabel_ScanPlusMinus = new QLabel("+", m_pGroupBox_ScannerControl);
-    m_pLabel_ScanPlusMinus->setBuddy(m_pLineEdit_PeakToPeakVoltage);
-    m_pLabel_GalvanoVoltage = new QLabel("V", m_pGroupBox_ScannerControl);
-    m_pLabel_GalvanoVoltage->setBuddy(m_pLineEdit_OffsetVoltage);
+		m_pLineEdit_OffsetVoltage[i] = new QLineEdit(m_pGroupBox_ScannerControl);
+		m_pLineEdit_OffsetVoltage[i]->setFixedWidth(30);
+		m_pLineEdit_OffsetVoltage[i]->setText(QString::number(m_pConfig->galvoScanVoltageOffset[i], 'f', 1));
+		m_pLineEdit_OffsetVoltage[i]->setAlignment(Qt::AlignCenter);
+		m_pLineEdit_OffsetVoltage[i]->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+		m_pLabel_ScanVoltage[i] = new QLabel(i == 0 ? "Fast Scan Voltage " : "Slow Scan Voltage ", m_pGroupBox_ScannerControl);
+		m_pLabel_ScanPlusMinus[i] = new QLabel("+", m_pGroupBox_ScannerControl);
+		m_pLabel_ScanPlusMinus[i]->setBuddy(m_pLineEdit_PeakToPeakVoltage[i]);
+		m_pLabel_GalvanoVoltage[i] = new QLabel("V", m_pGroupBox_ScannerControl);
+		m_pLabel_GalvanoVoltage[i]->setBuddy(m_pLineEdit_OffsetVoltage[i]);
+	}
 
 	QHBoxLayout *pHBoxLayout_FastScanFreq = new QHBoxLayout;
 	pHBoxLayout_FastScanFreq->setSpacing(3);
@@ -259,19 +252,20 @@ void QDeviceControlTab::createScanControl()
 	pHBoxLayout_FastScanFreq->addWidget(m_pCheckBox_GalvoScanControl);
 	pHBoxLayout_FastScanFreq->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
 	pHBoxLayout_FastScanFreq->addWidget(m_pLabel_GalvoFastScanFreq);
-	pHBoxLayout_FastScanFreq->addWidget(m_pLineEdit_GalvoFastScanFreq);
-	pHBoxLayout_FastScanFreq->addWidget(m_pLabel_GalvoFastScanFreqHz);
 	
 	QGridLayout *pGridLayout_GalvoScanControl = new QGridLayout;
 	pGridLayout_GalvoScanControl->setSpacing(3);
 
 	pGridLayout_GalvoScanControl->addItem(pHBoxLayout_FastScanFreq, 0, 0, 1, 6);
-	pGridLayout_GalvoScanControl->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 0);
-	pGridLayout_GalvoScanControl->addWidget(m_pLabel_ScanVoltage, 1, 1);
-	pGridLayout_GalvoScanControl->addWidget(m_pLineEdit_PeakToPeakVoltage, 1, 2);
-	pGridLayout_GalvoScanControl->addWidget(m_pLabel_ScanPlusMinus, 1, 3);
-	pGridLayout_GalvoScanControl->addWidget(m_pLineEdit_OffsetVoltage, 1, 4);
-	pGridLayout_GalvoScanControl->addWidget(m_pLabel_GalvanoVoltage, 1, 5);
+	for (int i = 0; i < 2; i++)
+	{
+		pGridLayout_GalvoScanControl->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1 + i, 0);
+		pGridLayout_GalvoScanControl->addWidget(m_pLabel_ScanVoltage[i], 1 + i, 1);
+		pGridLayout_GalvoScanControl->addWidget(m_pLineEdit_PeakToPeakVoltage[i], 1 + i, 2);
+		pGridLayout_GalvoScanControl->addWidget(m_pLabel_ScanPlusMinus[i], 1 + i, 3);
+		pGridLayout_GalvoScanControl->addWidget(m_pLineEdit_OffsetVoltage[i], 1 + i, 4);
+		pGridLayout_GalvoScanControl->addWidget(m_pLabel_GalvanoVoltage[i], 1 + i, 5);
+	}
 
 	pVBoxLayout_ScannerControl->addItem(pGridLayout_GalvoScanControl);
 
@@ -280,8 +274,11 @@ void QDeviceControlTab::createScanControl()
 
     // Connect signal and slot
     connect(m_pCheckBox_GalvoScanControl, SIGNAL(toggled(bool)), this, SLOT(connectGalvanoMirror(bool)));
-    connect(m_pLineEdit_PeakToPeakVoltage, SIGNAL(textChanged(const QString &)), this, SLOT(changeGalvoScanVoltage(const QString &)));
-    connect(m_pLineEdit_OffsetVoltage, SIGNAL(textChanged(const QString &)), this, SLOT(changeGalvoScanVoltageOffset(const QString &)));    
+	for (int i = 0; i < 2; i++)
+	{
+		connect(m_pLineEdit_PeakToPeakVoltage[i], SIGNAL(textChanged(const QString &)), this, SLOT(changeGalvoScanVoltage(const QString &)));
+		connect(m_pLineEdit_OffsetVoltage[i], SIGNAL(textChanged(const QString &)), this, SLOT(changeGalvoScanVoltageOffset(const QString &)));
+	}
 }
 
 void QDeviceControlTab::createNanoscopeStageControl()
@@ -617,47 +614,45 @@ void QDeviceControlTab::startFlimTriggering(bool toggled)
         // Create FLIm laser sync control objects
         if (!m_pFlimTrigControlLaser)
         {
-			m_pFlimTrigControlLaser = new FlimTrigger;
+			m_pFlimTrigControlLaser = new PulseTrainGenerator;
 			m_pFlimTrigControlLaser->SendStatusMessage += [&](const char* msg, bool is_error) {
                 QString qmsg = QString::fromUtf8(msg);
                 emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
             };
         }
-		m_pFlimTrigControlLaser->sourceTerminal = NI_FLIM_TRIG_SOURCE;
+		m_pFlimTrigControlLaser->triggerSource = NI_FLIM_TRIG_SOURCE;
 		m_pFlimTrigControlLaser->counterChannel = NI_FLIM_TRIG_CHANNEL;
 		m_pFlimTrigControlLaser->frequency = FLIM_LASER_REP_RATE;
 		m_pFlimTrigControlLaser->finite_samps = FLIM_LASER_FINITE_SAMPS;
 
 		if (!m_pFlimTrigControlDAQ)
 		{
-			m_pFlimTrigControlDAQ = new FlimTrigger;
+			m_pFlimTrigControlDAQ = new PulseTrainGenerator;
 			m_pFlimTrigControlDAQ->SendStatusMessage += [&](const char* msg, bool is_error) {
 				QString qmsg = QString::fromUtf8(msg);
 				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
 			};
 		}
-		m_pFlimTrigControlDAQ->sourceTerminal = ALAZAR_DAQ_TRIG_SOURCE;
+		m_pFlimTrigControlDAQ->triggerSource = ALAZAR_DAQ_TRIG_SOURCE;
 		m_pFlimTrigControlDAQ->counterChannel = ALAZAR_DAQ_TRIG_CHANNEL;
 		m_pFlimTrigControlDAQ->frequency = FLIM_LASER_REP_RATE;
 		m_pFlimTrigControlDAQ->finite_samps = FLIM_LASER_FINITE_SAMPS;
 
-		//// Create master triggering control objects
-		//if (!m_pPulseTrainMaster)
-		//{
-		//	m_pPulseTrainMaster = new PulseTrainGenerator;
-		//	m_pPulseTrainMaster->SendStatusMessage += [&](const char* msg, bool is_error) {
-		//		QString qmsg = QString::fromUtf8(msg);
-		//		emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-		//	};
-		//}
-
-		//// Initializing
-		//m_pPulseTrainMaster->counterChannel = NI_MASTER_TRIG_CHANNEL;
-		//m_pPulseTrainMaster->triggerSource = NI_MASTER_TRIG_SOURCE; // Corpus callosum = SY Kwon
-		//m_pPulseTrainMaster->frequency = CRS_SCAN_FREQ;
-		
+		// Create master triggering control objects
+		if (!m_pMasterTrigger)
+		{
+			m_pMasterTrigger = new PulseTrainGenerator;
+			m_pMasterTrigger->SendStatusMessage += [&](const char* msg, bool is_error) {
+				QString qmsg = QString::fromUtf8(msg);
+				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
+			};
+		}		
+		m_pMasterTrigger->counterChannel = NI_MASTER_TRIG_CHANNEL;
+		m_pMasterTrigger->frequency = FLIM_LASER_REP_RATE;
+		m_pMasterTrigger->finite_samps = FLIM_LASER_FINITE_SAMPS;
+				
         // Initializing
-		if (!m_pFlimTrigControlLaser->initialize() || !m_pFlimTrigControlDAQ->initialize()) // || !m_pPulseTrainMaster->initialize())
+		if (!m_pFlimTrigControlLaser->initialize() || !m_pFlimTrigControlDAQ->initialize() || !m_pMasterTrigger->initialize())
         {
             m_pCheckBox_FlimLaserTrigControl->setChecked(false);
             return;
@@ -667,18 +662,18 @@ void QDeviceControlTab::startFlimTriggering(bool toggled)
 		m_pFlimTrigControlLaser->start();
 		m_pFlimTrigControlDAQ->start();
 
-		//std::this_thread::sleep_for(std::chrono::milliseconds(200));
-		//m_pPulseTrainMaster->start();
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		m_pMasterTrigger->start();
     }
     else
     {
         // Delete FLIm laser sync control objects
-		//if (m_pPulseTrainMaster)
-		//{
-		//	m_pPulseTrainMaster->stop();
-		//	delete m_pPulseTrainMaster;
-		//	m_pPulseTrainMaster = nullptr;
-		//}
+		if (m_pMasterTrigger)
+		{
+			m_pMasterTrigger->stop();
+			delete m_pMasterTrigger;
+			m_pMasterTrigger = nullptr;
+		}
 
         if (m_pFlimTrigControlLaser)
         {
@@ -703,10 +698,6 @@ void QDeviceControlTab::startFlimTriggering(bool toggled)
     }
 }
 
-void QDeviceControlTab::changeFlimLaserRepRate(const QString &rep_rate)
-{
-    m_pConfig->flimLaserRepRate = rep_rate.toInt();
-}
 
 void QDeviceControlTab::connectFlimLaser(bool toggled)
 {
@@ -846,93 +837,88 @@ void QDeviceControlTab::connectGalvanoMirror(bool toggled)
         m_pCheckBox_GalvoScanControl->setText("Stop Galvano Mirror Scanning");
 
         // Set enabled false for Galvano mirror control widgets
-		m_pLabel_ScanVoltage->setEnabled(false);
-		m_pLineEdit_PeakToPeakVoltage->setEnabled(false);
-		m_pLabel_ScanPlusMinus->setEnabled(false);
-		m_pLineEdit_OffsetVoltage->setEnabled(false);
-		m_pLabel_GalvanoVoltage->setEnabled(false);
-
-		//if (m_pStreamTab)
-		//{
-		//	m_pStreamTab->setYLinesWidgets(false);
-		//}
-
-
-#if (CRS_DIR_FACTOR == 2)
-		// Create two edge detection enable control objects
-		if (!m_pTwoEdgeTriggerEnable)
+		m_pLabel_GalvoFastScanFreq->setEnabled(false);
+		for (int i = 0; i < 2; i++)
 		{
-			m_pTwoEdgeTriggerEnable = new TwoEdgeTriggerEnable;
-			m_pTwoEdgeTriggerEnable->SendStatusMessage += [&](const char* msg, bool is_error) {
+			m_pLabel_ScanVoltage[i]->setEnabled(false);
+			m_pLineEdit_PeakToPeakVoltage[i]->setEnabled(false);
+			m_pLabel_ScanPlusMinus[i]->setEnabled(false);
+			m_pLineEdit_OffsetVoltage[i]->setEnabled(false);
+			m_pLabel_GalvanoVoltage[i]->setEnabled(false);
+		}
+		
+		// Create Galvano slave trigger control objects
+		if (!m_pGalvoSlaveTrigger)
+		{
+			m_pGalvoSlaveTrigger = new PulseTrainDivider;
+			m_pGalvoSlaveTrigger->SendStatusMessage += [&](const char* msg, bool is_error) {
 				QString qmsg = QString::fromUtf8(msg);
 				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
 			};
 		}
-
-		m_pTwoEdgeTriggerEnable->lines = NI_GALVO_TWO_EDGE_LINE;
-#endif
+		m_pGalvoSlaveTrigger->sourceTerminal = NI_GALVO_TRIG_SOURCE;
+		m_pGalvoSlaveTrigger->counterChannel = NI_GALVO_TRIG_CHANNEL;
+		m_pGalvoSlaveTrigger->slow = NI_GALVO_TRIG_SLOW_FACTOR;
 
         // Create Galvano mirror control objects
-        if (!m_pGalvoScan)
-        {
-            m_pGalvoScan = new GalvoScan;
-            m_pGalvoScan->SendStatusMessage += [&](const char* msg, bool is_error) {
-                QString qmsg = QString::fromUtf8(msg);
-                emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-            };
-        }
-
-		m_pGalvoScan->sourceTerminal = (FAST_DIR_FACTOR == 1) ? NI_GALVO_SOURCE : NI_GALVO_SOURCE_BIDIR;
-		m_pGalvoScan->triggerSource = NI_GALVO_START_TRIG_SOURCE;
-        m_pGalvoScan->pp_voltage = m_pLineEdit_PeakToPeakVoltage->text().toDouble();
-        m_pGalvoScan->offset = m_pLineEdit_OffsetVoltage->text().toDouble();        
-		m_pGalvoScan->step = 1 * (m_pConfig->nLines + GALVO_FLYING_BACK + 2);
-
+		if (!m_pGalvoScan)
+		{
+			m_pGalvoScan = new GalvoScan;
+			m_pGalvoScan->SendStatusMessage += [&](const char* msg, bool is_error) {
+				QString qmsg = QString::fromUtf8(msg);
+				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
+			};
+		}
+		m_pGalvoScan->physicalChannel = NI_GALVO_CHANNEL;
+		m_pGalvoScan->sourceTerminal = NI_GALVO_SOURCE;		
+		m_pGalvoScan->freq_fast = FAST_SCAN_FREQ;
+		m_pGalvoScan->max_rate = FLIM_LASER_REP_RATE / m_pGalvoSlaveTrigger->slow;
+		m_pGalvoScan->pp_voltage_fast = m_pLineEdit_PeakToPeakVoltage[0]->text().toDouble();
+		m_pGalvoScan->pp_voltage_slow = m_pLineEdit_PeakToPeakVoltage[1]->text().toDouble();
+		m_pGalvoScan->offset_fast = m_pLineEdit_OffsetVoltage[0]->text().toDouble();			
+		m_pGalvoScan->offset_slow = m_pLineEdit_OffsetVoltage[1]->text().toDouble();
+		m_pGalvoScan->step = (N_PIXELS / m_pGalvoSlaveTrigger->slow) * (m_pConfig->nLines + GALVO_FLYING_BACK + 2);
+		 
         // Initializing
-#if (FAST_DIR_FACTOR == 1)
-		if (!m_pGalvoScan->initialize())
-#elif (FAST_DIR_FACTOR == 2)		
-		if (!m_pTwoEdgeTriggerEnable->initialize() || !m_pGalvoScan->initialize())
-#endif
+		if ((!m_pGalvoScan->initialize()) || (!m_pGalvoSlaveTrigger->initialize()))
 		{
 			m_pCheckBox_GalvoScanControl->setChecked(false);
 			return;
 		}
 		else
 		{
-#if (CRS_DIR_FACTOR == 2)
-			m_pTwoEdgeTriggerEnable->start();
-#endif
-			m_pGalvoScan->start();
+			m_pGalvoScan->start();		
+			m_pGalvoSlaveTrigger->start();
 		}
     }
     else
     {
-        // Delete Galvano mirror control objects
-        if (m_pGalvoScan)
-        {
-            m_pGalvoScan->stop();
-            delete m_pGalvoScan;
-            m_pGalvoScan = nullptr;
-			
-        }
-
-#if (CRS_DIR_FACTOR == 2)
-		// Delete two edge detection enable control objects
-		if (m_pTwoEdgeTriggerEnable)
+		// Delete Galvano slave trigger control objects
+		if (m_pGalvoSlaveTrigger)
 		{
-			m_pTwoEdgeTriggerEnable->stop();
-			delete m_pTwoEdgeTriggerEnable;
-			m_pTwoEdgeTriggerEnable = nullptr;
+			m_pGalvoSlaveTrigger->stop();
+			delete m_pGalvoSlaveTrigger;
+			m_pGalvoSlaveTrigger = nullptr;
 		}
-#endif
+
+        // Delete Galvano mirror control objects
+		if (m_pGalvoScan)
+		{
+			m_pGalvoScan->stop();
+			delete m_pGalvoScan;
+			m_pGalvoScan = nullptr;
+		}
 
         // Set enabled false for Galvano mirror control widgets
-		m_pLabel_ScanVoltage->setEnabled(true);
-		m_pLineEdit_PeakToPeakVoltage->setEnabled(true);
-		m_pLabel_ScanPlusMinus->setEnabled(true);
-		m_pLineEdit_OffsetVoltage->setEnabled(true);
-		m_pLabel_GalvanoVoltage->setEnabled(true);
+		m_pLabel_GalvoFastScanFreq->setEnabled(true);
+		for (int i = 0; i < 2; i++)
+		{
+			m_pLabel_ScanVoltage[i]->setEnabled(true);
+			m_pLineEdit_PeakToPeakVoltage[i]->setEnabled(true);
+			m_pLabel_ScanPlusMinus[i]->setEnabled(true);
+			m_pLineEdit_OffsetVoltage[i]->setEnabled(true);
+			m_pLabel_GalvanoVoltage[i]->setEnabled(true);
+		}
 
 		if (!m_pStreamTab->getOperationTab()->isAcquisitionButtonToggled())
 			m_pStreamTab->setYLinesWidgets(true);
@@ -942,14 +928,16 @@ void QDeviceControlTab::connectGalvanoMirror(bool toggled)
     }
 }
 
-void QDeviceControlTab::changeGalvoScanVoltage(const QString &vol)
+void QDeviceControlTab::changeGalvoScanVoltage(const QString &)
 {
-	m_pConfig->galvoScanVoltage = vol.toFloat();
+	for (int i = 0; i < 2; i++)	
+		m_pConfig->galvoScanVoltage[i] = m_pLineEdit_PeakToPeakVoltage[i]->text().toFloat();
 }
 
-void QDeviceControlTab::changeGalvoScanVoltageOffset(const QString &vol)
+void QDeviceControlTab::changeGalvoScanVoltageOffset(const QString &)
 {
-	m_pConfig->galvoScanVoltageOffset = vol.toFloat();
+	for (int i = 0; i < 2; i++)
+		m_pConfig->galvoScanVoltageOffset[i] = m_pLineEdit_OffsetVoltage[i]->text().toFloat();	
 }
 
 

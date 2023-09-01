@@ -15,16 +15,12 @@
 class QStreamTab;
 
 class PmtGainControl;
-class FlimTrigger;
+class PulseTrainGenerator;
+class PulseTrainDivider;
 class IPGPhotonicsLaser;
 class FlimCalibDlg;
 
-class PulseTrainGenerator;
-class ResonantScan;
 class GalvoScan;
-#if (CRS_DIR_FACTOR == 2)
-class TwoEdgeTriggerEnable;
-#endif
 class NanoscopeStage;
 class DpcIllumination;
 
@@ -96,8 +92,7 @@ private slots: /////////////////////////////////////////////////////////////////
 
     // FLIm Laser Trigger Control
     void startFlimTriggering(bool);
-    void changeFlimLaserRepRate(const QString &);
-
+    
     // FLIm Laser Control
     void connectFlimLaser(bool);
 	void adjustLaserPower(int);
@@ -107,7 +102,7 @@ private slots: /////////////////////////////////////////////////////////////////
     void createFlimCalibDlg();
     void deleteFlimCalibDlg();
 
-    // Resonant & Galvano Scanner Control	
+    // Galvano Scanner Control	
     void connectGalvanoMirror(bool);
     void changeGalvoScanVoltage(const QString &);
     void changeGalvoScanVoltageOffset(const QString &);
@@ -128,17 +123,16 @@ signals: ///////////////////////////////////////////////////////////////////////
 private: ////////////////////////////////////////////////////////////////////////////////////////////////
     // PMT Gain Control & FLIm Laser Triggering
     PmtGainControl* m_pPmtGainControl;	
-    FlimTrigger* m_pFlimTrigControlLaser; 
-	FlimTrigger* m_pFlimTrigControlDAQ;
+    PulseTrainGenerator* m_pFlimTrigControlLaser; 
+	PulseTrainGenerator* m_pFlimTrigControlDAQ;
+	PulseTrainGenerator* m_pMasterTrigger;
 
 	// FLIm pulsed Laser Control
 	IPGPhotonicsLaser* m_pIPGPhotonicsLaser;
 
     // Galvo Scanner Control	
+	PulseTrainDivider* m_pGalvoSlaveTrigger;
     GalvoScan* m_pGalvoScan;	
-#if (CRS_DIR_FACTOR == 2)
-	TwoEdgeTriggerEnable* m_pTwoEdgeTriggerEnable;
-#endif
 
 	// Nanoscope Stage Control
 	NanoscopeStage* m_pNanoscopeStage;	
@@ -180,15 +174,13 @@ private: ///////////////////////////////////////////////////////////////////////
     FlimCalibDlg *m_pFlimCalibDlg;
 
     // Widgets for scanner control	
-    QCheckBox *m_pCheckBox_GalvoScanControl;
-	QLineEdit *m_pLineEdit_GalvoFastScanFreq;	
-    QLineEdit *m_pLineEdit_PeakToPeakVoltage;
-    QLineEdit *m_pLineEdit_OffsetVoltage;
+    QCheckBox *m_pCheckBox_GalvoScanControl;	
+    QLineEdit *m_pLineEdit_PeakToPeakVoltage[2];
+    QLineEdit *m_pLineEdit_OffsetVoltage[2];
 	QLabel *m_pLabel_GalvoFastScanFreq;
-	QLabel *m_pLabel_GalvoFastScanFreqHz;
-    QLabel *m_pLabel_ScanVoltage;
-    QLabel *m_pLabel_ScanPlusMinus;
-    QLabel *m_pLabel_GalvanoVoltage;
+    QLabel *m_pLabel_ScanVoltage[2];
+    QLabel *m_pLabel_ScanPlusMinus[2];
+    QLabel *m_pLabel_GalvanoVoltage[2];
     		
 	// Widgets for Motorized stage control
 	QCheckBox *m_pCheckBox_NanoscopeStageControl;

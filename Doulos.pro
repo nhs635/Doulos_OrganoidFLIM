@@ -68,15 +68,13 @@ SOURCES += DataAcquisition/AlazarDAQ/AlazarDAQ.cpp \
 
 SOURCES += MemoryBuffer/MemoryBuffer.cpp
 
-SOURCES += DeviceControl/FLImControl/PmtGainControl.cpp \
-    DeviceControl/FLImControl/FLImTrigger.cpp \
+SOURCES += DeviceControl/PmtGainControl/PmtGainControl.cpp \
+    DeviceControl/PulseTrainGenerator/PulseTrainGenerator.cpp \
+    DeviceControl/PulseTrainGenerator/PulseTrainDivider.cpp \
     DeviceControl/IPGPhotonicsLaser/DigitalInput/DigitalInput.cpp \
     DeviceControl/IPGPhotonicsLaser/DigitalOutput/DigitalOutput.cpp \
-    DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.cpp \
-    DeviceControl/ResonantScan/PulseTrainGenerator.cpp \
-    DeviceControl/ResonantScan/ResonantScan.cpp \
+    DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.cpp \    
     DeviceControl/GalvoScan/GalvoScan.cpp \
-    DeviceControl/GalvoScan/TwoEdgeTriggerEnable.cpp \
     DeviceControl/NanoscopeStage/NanoscopeStage.cpp \
     DeviceControl/DpcIllumination/DpcIllumination.cpp
 
@@ -100,15 +98,13 @@ HEADERS += DataAcquisition/AlazarDAQ/AlazarDAQ.h \
 
 HEADERS += MemoryBuffer/MemoryBuffer.h
 
-HEADERS += DeviceControl/FLImControl/PmtGainControl.h \
-    DeviceControl/FLImControl/FLImTrigger.h \
+HEADERS += DeviceControl/PmtGainControl/PmtGainControl.h \
+    DeviceControl/PulseTrainGenerator/PulseTrainGenerator.h \
+    DeviceControl/PulseTrainGenerator/PulseTrainDivider.h \
     DeviceControl/IPGPhotonicsLaser/DigitalInput/DigitalInput.h \
     DeviceControl/IPGPhotonicsLaser/DigitalOutput/DigitalOutput.h \
-    DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.h \
-    DeviceControl/ResonantScan/PulseTrainGenerator.h \
-    DeviceControl/ResonantScan/ResonantScan.h \
-    DeviceControl/GalvoScan/GalvoScan.h \
-    DeviceControl/GalvoScan/TwoEdgeTriggerEnable.h \
+    DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.h \    
+    DeviceControl/GalvoScan/GalvoScan.h \    
     DeviceControl/NanoscopeStage/NanoscopeStage.h \
     DeviceControl/DpcIllumination/DpcIllumination.h \
     DeviceControl/QSerialComm.h

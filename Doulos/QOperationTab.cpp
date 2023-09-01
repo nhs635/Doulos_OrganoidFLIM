@@ -94,12 +94,6 @@ QOperationTab::~QOperationTab()
 
 void QOperationTab::changedTab(bool change)
 {	
-//	if (change)
-//		m_pToggleButton_Acquisition->setChecked(!change);
-
-//	m_pToggleButton_Acquisition->setDisabled(change);
-//	m_pPushButton_DigitizerSetup->setDisabled(change);
-
 	(void)change;
 }
 
@@ -139,7 +133,7 @@ void QOperationTab::operateDataAcquisition(bool toggled)
 			if (m_pStreamTab->getCurrentModality())
 			{
 				// Set stitching mode
-				//if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
+				///if (m_pStreamTab->getImageStitchingCheckBox()->isChecked())
 				{
 					m_pStreamTab->getXStepLabel()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
 					m_pStreamTab->getYStepLabel()->setEnabled(m_pStreamTab->getImageStitchingCheckBox()->isChecked());
@@ -156,11 +150,8 @@ void QOperationTab::operateDataAcquisition(bool toggled)
 				m_pStreamTab->getDeviceControlTab()->getPmtGainControl()->setChecked(true);
 
 				// Start laser triggering
-				m_pStreamTab->getDeviceControlTab()->getFlimLaserTrigControl()->setChecked(true);
 				std::this_thread::sleep_for(std::chrono::milliseconds(300));
-
-				// Start resonant mirror triggering
-				//m_pStreamTab->getDeviceControlTab()->getResonantScanControl()->setChecked(true);
+				m_pStreamTab->getDeviceControlTab()->getFlimLaserTrigControl()->setChecked(true);
 			}
 			else
 			{
@@ -193,9 +184,6 @@ void QOperationTab::operateDataAcquisition(bool toggled)
 		
 		if (m_pStreamTab->getCurrentModality())
 		{
-			// Stop resonant mirror triggering
-			///m_pStreamTab->getDeviceControlTab()->getResonantScanControl()->setChecked(false);
-
 			// Stop laser triggering
 			m_pStreamTab->getDeviceControlTab()->getFlimLaserTrigControl()->setChecked(false);
 

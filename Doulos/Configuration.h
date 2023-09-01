@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"1.0.5"
+#define VERSION						"1.1.0"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -9,47 +9,44 @@
 //////////////////////// Image Setup /////////////////////////
 #define ADC_RATE					500 // MegaSamps/sec
 
-#define N_SCANS		                384 //384 //768 // buffer width (should be 4's multiples)
-#define N_TIMES						500 // buffer height
+#define N_SCANS		                384 // buffer width (should be 4's multiples)
+#define N_TIMES						512 // buffer height
 
-#define N_PIXELS					2 * N_TIMES//4 * N_TIMES // image width (will be deprecated)
+#define N_PIXELS					2 * N_TIMES // image width (will be deprecated)
 
 //////////////////////// FLIM Setup /////////////////////////
 #define FLIM_LASER_COM_PORT			"COM3"
-#define FLIM_LASER_REP_RATE			1'100'000.0 
-#define FLIM_LASER_FINITE_SAMPS		2'000 // * CRS_SCAN_FREQ = REP_RATE
-
-#define ALAZAR_TRIG_DELAY			0  // (will be deprecated)
+#define FLIM_LASER_REP_RATE			1'100'000.0
+#define FLIM_LASER_FINITE_SAMPS		2 * N_PIXELS  // bi-directional
 
 #define POWER_LEVEL_LINE			"Dev1/port0/line0:7"
 #define POWER_LATCH_LINE			"Dev1/port0/line8"
 #define EM_ENABLE_LINE				"Dev1/port0/line9:11"
 #define MONITORING_LINE				"Dev1/port0/line12:14"
 
-#define NI_FLIM_TRIG_CHANNEL		"Dev1/ctr2"  // PFI14
-#define NI_FLIM_TRIG_SOURCE			"/Dev1/PFI5"
+#define NI_MASTER_TRIG_CHANNEL		"Dev1/ctr0"  // PFI12
 
-#define ALAZAR_DAQ_TRIG_CHANNEL		"Dev1/ctr1"  // PFI13
-#define ALAZAR_DAQ_TRIG_SOURCE		"/Dev1/PFI7"
+#define NI_FLIM_TRIG_CHANNEL		"Dev1/ctr1"  // PFI13
+#define NI_FLIM_TRIG_SOURCE			"/Dev1/PFI2"
 
-//#define NI_MASTER_TRIG_CHANNEL		"Dev1/ctr3" // PFI15
-//#define NI_MASTER_TRIG_SOURCE		"/Dev1/PFI4"
+#define ALAZAR_DAQ_TRIG_CHANNEL		"Dev1/ctr2"  // PFI14
+#define ALAZAR_DAQ_TRIG_SOURCE		"/Dev1/PFI0"
 
 #define NI_PMT_GAIN_CHANNEL		    "Dev1/ao2"
 
 #define AUTO_STOP_AFTER_REC
 
 //////////////////////// Scan Setup /////////////////////////
-#define FAST_SCAN_FREQ				500.0
-#define FAST_DIR_FACTOR				1 // 1: unidirectional, 2: bidirectional
+#define FAST_SCAN_FREQ				FLIM_LASER_REP_RATE / (double)(FLIM_LASER_FINITE_SAMPS)  // 550 Hz
+#define FAST_DIR_FACTOR				2 // 1: unidirectional, 2: bidirectional => only bidirectional mode is available
 #define FAST_TOTAL_PIECES			4
-#define FAST_VALID_PIECES			2 // full recovery
+
+#define NI_GALVO_TRIG_CHANNEL		"Dev1/ctr3"  // PFI15
+#define NI_GALVO_TRIG_SOURCE		"/Dev1/PFI12"
+#define	NI_GALVO_TRIG_SLOW_FACTOR	4
 
 #define NI_GALVO_CHANNEL			"Dev1/ao0:1"
-#define NI_GALVO_SOURCE				NI_FLIM_TRIG_SOURCE
-#define NI_GALVO_SOURCE_BIDIR		"/Dev1/ChangeDetectionEvent"
-#define NI_GALVO_START_TRIG_SOURCE	"/Dev1/PFI6"
-#define NI_GALVO_TWO_EDGE_LINE		"Dev1/port0/line16"
+#define NI_GALVO_SOURCE				"/Dev1/PFI15"
 #define GALVO_FLYING_BACK			10  // flying-back pixel (should be even)
 
 #define NANOSCOPE_STAGE_PORT		"COM4"
@@ -179,9 +176,11 @@ public:
         pmtGainVoltage = settings.value("pmtGainVoltage").toFloat();
         flimLaserRepRate = settings.value("flimLaserRepRate").toInt();
 		flimLaserPower = settings.value("flimLaserPower").toInt();
-		resonantScanVoltage = settings.value("resonantScanVoltage").toFloat();
-        galvoScanVoltage = settings.value("galvoScanVoltage").toFloat();
-        galvoScanVoltageOffset = settings.value("galvoScanVoltageOffset").toFloat();        		
+		for (int i = 0; i < 2; i++)
+		{
+			galvoScanVoltage[i] = settings.value(QString("galvoScanVoltage_%1").arg(i + 1)).toFloat();
+			galvoScanVoltageOffset[i] = settings.value(QString("galvoScanVoltageOffset_%1").arg(i + 1)).toFloat();
+		}
 		for (int i = 0; i < 3; i++)
 		{
 			NanoscopePosition[i] = settings.value(QString("NanoscopePosition_%1").arg(i + 1)).toInt();
@@ -198,8 +197,8 @@ public:
 	{
 		QSettings settings(inipath, QSettings::IniFormat);
 		settings.beginGroup("configuration");
-		
-        // Image size
+
+		// Image size
 		settings.setValue("nScans", nScans);
 		settings.setValue("nTimes", nTimes);
 
@@ -211,20 +210,20 @@ public:
 
 		// Image averaging
 		settings.setValue("imageAveragingFrames", imageAveragingFrames);
-		
+
 		// Bidirectional scan compensation
 		settings.setValue("biDirScanComp", QString::number(biDirScanComp, 'f', 2));
-		
+
 		// CRS nonlinearity compensation
 		settings.setValue("crsCompensation", crsCompensation);
 
 		// Image stitching
 		settings.setValue("imageStichingXStep", imageStichingXStep);
 		settings.setValue("imageStichingYStep", imageStichingYStep);
-		
-        // FLIm processing
+
+		// FLIm processing
 		settings.setValue("flimBg", QString::number(flimBg, 'f', 2));
-		settings.setValue("flimWidthFactor", QString::number(flimWidthFactor, 'f', 2)); 
+		settings.setValue("flimWidthFactor", QString::number(flimWidthFactor, 'f', 2));
 		for (int i = 0; i < 4; i++)
 		{
 			settings.setValue(QString("flimChStartInd_%1").arg(i), flimChStartInd[i]);
@@ -232,8 +231,8 @@ public:
 				settings.setValue(QString("flimDelayOffset_%1").arg(i), QString::number(flimDelayOffset[i - 1], 'f', 3));
 		}
 
-        // Visualization
-        settings.setValue("flimEmissionChannel", flimEmissionChannel);
+		// Visualization
+		settings.setValue("flimEmissionChannel", flimEmissionChannel);
 		settings.setValue("flimLifetimeColorTable", flimLifetimeColorTable);
 		settings.setValue("dpcColorTable", dpcColorTable);
 		settings.setValue("phaseColorTable", phaseColorTable);
@@ -253,14 +252,16 @@ public:
 		settings.setValue("regL2amp", QString::number(regL2amp, 'f', 2));
 		settings.setValue("regL2phase", QString::number(regL2phase, 'f', 4));
 		settings.setValue("regTv", QString::number(regTv, 'f', 2));
-		
+
 		// Device control
-        settings.setValue("pmtGainVoltage", QString::number(pmtGainVoltage, 'f', 2));
-        settings.setValue("flimLaserRepRate", flimLaserRepRate);
-		settings.setValue("flimLaserPower", flimLaserPower);
-		settings.setValue("resonantScanVoltage", QString::number(resonantScanVoltage, 'f', 2));
-        settings.setValue("galvoScanVoltage", QString::number(galvoScanVoltage, 'f', 1));
-        settings.setValue("galvoScanVoltageOffset", QString::number(galvoScanVoltageOffset, 'f', 1));    
+		settings.setValue("pmtGainVoltage", QString::number(pmtGainVoltage, 'f', 2));
+		settings.setValue("flimLaserRepRate", flimLaserRepRate);
+		settings.setValue("flimLaserPower", flimLaserPower);		
+		for (int i = 0; i < 2; i++)
+		{
+			settings.setValue(QString("galvoScanVoltage_%1").arg(i + 1), QString::number(galvoScanVoltage[i], 'f', 1));
+			settings.setValue(QString("galvoScanVoltageOffset_%1").arg(i + 1), QString::number(galvoScanVoltageOffset[i], 'f', 1));
+		}
 		for (int i = 0; i < 3; i++)
 		{
 			settings.setValue(QString("NanoscopePosition_%1").arg(i + 1), NanoscopePosition[i]);
@@ -322,10 +323,9 @@ public:
 
     int flimLaserRepRate;
 	int flimLaserPower;
-
-	float resonantScanVoltage;
-    float galvoScanVoltage;
-    float galvoScanVoltageOffset;    
+		
+    float galvoScanVoltage[2];
+    float galvoScanVoltageOffset[2];
 
 	int NanoscopePosition[3];
 	int NanoscopeSpeed[3];

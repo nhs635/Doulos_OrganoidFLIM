@@ -9,10 +9,12 @@ typedef void *TaskHandle;
 class PulseTrainGenerator
 {
 public:
-    PulseTrainGenerator();
+	PulseTrainGenerator();
     ~PulseTrainGenerator();
 
-    int frequency;
+	double frequency;
+    int finite_samps;
+	    
 	const char* counterChannel;
 	const char* triggerSource;
 
@@ -24,8 +26,6 @@ public:
     callback2<const char*, bool> SendStatusMessage;
 
 private:
-	const char* sourceTerminal;
-	    
     TaskHandle _taskHandle;
     void dumpError(int res, const char* pPreamble);
 };

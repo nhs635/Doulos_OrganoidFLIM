@@ -1,18 +1,21 @@
-#ifndef TWO_EDGE_TRIG_ENABLE_H_
-#define TWO_EDGE_TRIG_ENABLE_H_
+#ifndef PULSE_TRAIN_DIVIDER_H_
+#define PULSE_TRAIN_DIVIDER_H_
 
 #include <Common/callback.h>
 
 
 typedef void *TaskHandle;
 
-class TwoEdgeTriggerEnable
+class PulseTrainDivider
 {
 public:
-	TwoEdgeTriggerEnable();
-    ~TwoEdgeTriggerEnable();
+	PulseTrainDivider();
+    ~PulseTrainDivider();
 
-    const char* lines;
+	int slow;
+	    
+	const char* counterChannel;
+	const char* sourceTerminal;
 
     bool initialize();
     void start();
@@ -20,10 +23,10 @@ public:
 
 public:
     callback2<const char*, bool> SendStatusMessage;
-	
+
 private:
     TaskHandle _taskHandle;
     void dumpError(int res, const char* pPreamble);
 };
 
-#endif // TWO_EDGE_TRIG_ENABLE_H_
+#endif // PULSE_TRAIN_DIVIDER_H_

@@ -53,7 +53,7 @@ bool DataAcquisition::InitializeAcquistion(bool is_flim)
 		m_pDaq->nChannels = 1;
 		m_pDaq->nScans = m_pConfig->nScans;
 		m_pDaq->nAlines = m_pConfig->nTimes;
-		m_pDaq->TriggerDelay = ALAZAR_TRIG_DELAY; // trigger delay
+		m_pDaq->TriggerDelay = 0; // trigger delay
 		m_pDaq->VoltRange1 = INPUT_RANGE_PM_400_MV; // INPUT_RANGE_PM_400_MV INPUT_RANGE_PM_1_V INPUT_RANGE_PM_2_V
 
 		// Initialization for DAQ
